@@ -177,3 +177,34 @@ def test_auto_sync_retries_after_configuration_failure(monkeypatch):
     with pytest.raises(asyncio.CancelledError):
         asyncio.run(cloud.sync_loop())
     assert calls == ['attempt', 'retry scheduled']
+
+
+def test_wp_cloud_filter_preserves_pending_progress_without_non_dev_bodies(factory, tmp_path):
+    import asyncio
+    from app.aggregate_store import AggregateStore
+    def post(identifier, title):
+        return {'id': identifier, 'link': f'https://inthiswork.com/archives/{identifier}', 'status': 'publish',
+                'date': '2026-10-01T12:00:00', 'modified': '2026-10-01T12:00:00',
+                'title': {'rendered': title}, 'categories': [191700167],
+                'content': {'rendered': '<p>Synthetic posting body</p>'}}
+    rows = [post(1, '기업｜백엔드 개발자'), post(2, '기업｜영업 담당자'), post(3, '기업｜다른 직무로 변경')]
+    requests = []
+    class Fetcher:
+        async def get_response(self, url):
+            requests.append(url)
+            return SimpleNamespace(text=json.dumps(rows), total=3, total_pages=1)
+    store = AggregateStore(tmp_path / 'cloud-inventory.sqlite3')
+    async def scan(s):
+        return [r async for r in cloud.DevelopmentInThisWorkCrawler(s, known_ids=['3']).discover(Fetcher())]
+    assert [r.external_id for r in asyncio.run(scan(store))] == ['1', '3']
+    # Simulate the execution time limit before selected bodies were saved.
+    snapshot = cloud.export_snapshot(factory, store)
+    refs = {r['id']: r for r in snapshot['inventory']['aggregate_refs']}
+    assert refs['1']['state'] == 'pending' and refs['1']['payload']
+    assert refs['2']['recheck_mode'] == 'ignored' and refs['2']['payload'] is None
+    restored = AggregateStore(tmp_path / 'next-run.sqlite3')
+    cloud.restore_inventory(snapshot, restored)
+    requests.clear()
+    assert [r.external_id for r in asyncio.run(scan(restored))] == ['1', '3']
+    assert len(requests) == 1
+    assert restored.meta('inthiswork', 'scanned_unique_count') == 3

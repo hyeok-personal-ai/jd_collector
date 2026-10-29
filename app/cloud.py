@@ -26,10 +26,30 @@ from .locking import FileLock, writer_guard
 from .repository import save_raw_posting, upsert_job
 from .runner import mark_detail_checked, run_crawler, _utc
 from .schema import JobDraft
+from .crawlers.aggregators import InThisWorkPublicCrawler
 
 MAX_BYTES = 100_000_000
 STATE_PATH = 'snapshot.json.gz'
 REPO = re.compile(r'[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+')
+
+
+class DevelopmentInThisWorkCrawler(InThisWorkPublicCrawler):
+    """Filter public list titles before body persistence, while tracking known revisions."""
+    def __init__(self, store=None, known_ids=()):
+        super().__init__(store)
+        self.known_ids = set(known_ids)
+
+    async def discover(self, fetcher):
+        from bs4 import BeautifulSoup
+        async for ref in super().discover(fetcher):
+            row = (ref.payload or {}).get('draft') or {}
+            title = BeautifulSoup(row.get('title', {}).get('rendered', ''), 'html.parser').get_text(' ', strip=True)
+            selected = ref.external_id in self.known_ids or (title and label_job(JobDraft(
+                source_id=self.site_id, external_id=ref.external_id, original_url=ref.url, title=title)).it_match == 'yes')
+            if selected:
+                yield ref
+            else:
+                self.store.mark(self.site_id, ref.external_id, 'done', active=False, recheck_mode='ignored')
 
 
 def gh(*args, payload=None):
@@ -99,13 +119,14 @@ def decode_snapshot(blob):
     return doc
 
 
-def export_snapshot(factory=SessionLocal, store=None, statuses=None):
+def export_snapshot(factory=SessionLocal, store=None, statuses=None, *, include_tracked=False):
     store = store or AggregateStore()
     jobs = []
     with factory() as db:
-        query = select(Job).join(JobClassification, (Job.source_id == JobClassification.source_id) &
-            (Job.external_id == JobClassification.external_id)).where(
-                Job.source_id.in_(['zighang', 'inthiswork']), JobClassification.it_match == 'yes')
+        query = select(Job).where(Job.source_id.in_(['zighang', 'inthiswork']))
+        if not include_tracked:
+            query = query.join(JobClassification, (Job.source_id == JobClassification.source_id) &
+                (Job.external_id == JobClassification.external_id)).where(JobClassification.it_match == 'yes')
         for job in db.scalars(query):
             state = db.scalar(select(ListingState).where(ListingState.source_id == job.source_id,
                                                         ListingState.external_id == job.external_id))
@@ -118,10 +139,14 @@ def export_snapshot(factory=SessionLocal, store=None, statuses=None):
         focus = [dict(r) for r in db.execute("SELECT * FROM aggregate_focus WHERE source='zighang' AND focus='development'")]
         focus_keys = {(r['source'], r['id']) for r in focus}
         refs = [dict(r) for r in db.execute("SELECT r.* FROM aggregate_refs r WHERE source='inthiswork' OR (source='zighang' AND EXISTS (SELECT 1 FROM aggregate_focus f WHERE f.source=r.source AND f.id=r.id AND f.focus='development'))")
-                if (r['source'], r['id']) in keys | focus_keys]
-        pages = [dict(r) for r in db.execute("SELECT * FROM aggregate_pages WHERE source='zighang_company'")]
+                if r['source'] == 'inthiswork' or (r['source'], r['id']) in keys | focus_keys]
+        for row in refs:
+            if row['source'] == 'inthiswork' and row['recheck_mode'] == 'ignored':
+                row['payload'] = None  # Preserve scan position without retaining non-development bodies.
+        pages = [dict(r) for r in db.execute("SELECT * FROM aggregate_pages WHERE source IN ('zighang_company','inthiswork')")]
+        meta = [dict(r) for r in db.execute("SELECT * FROM aggregate_meta WHERE source='inthiswork'")]
     return {'version': 1, 'generated_at': utcnow().isoformat(), 'jobs': jobs,
-            'inventory': {'aggregate_refs': refs, 'aggregate_focus': focus, 'aggregate_pages': pages},
+            'inventory': {'aggregate_refs': refs, 'aggregate_focus': focus, 'aggregate_pages': pages, 'aggregate_meta': meta},
             'source_status': statuses or {}}
 
 
@@ -168,7 +193,7 @@ def merge_jobs(doc, factory=SessionLocal):
 def restore_inventory(doc, store):
     # Used ONLY by the isolated cloud process, never to replace local queue/preferences.
     with store.db() as db:
-        for table in ('aggregate_refs', 'aggregate_focus', 'aggregate_pages'):
+        for table in ('aggregate_refs', 'aggregate_focus', 'aggregate_pages', 'aggregate_meta'):
             columns = [r[1] for r in db.execute(f'PRAGMA table_info({table})')]
             for row in doc.get('inventory', {}).get(table, []):
                 if row.get('source') not in ('zighang', 'inthiswork', 'zighang_company'):
@@ -268,16 +293,19 @@ async def collect_cloud(repo, budget=600):
     merge_jobs(doc)
     store = AggregateStore()
     restore_inventory(doc, store)
-    from .crawlers.aggregators import InThisWorkPublicCrawler, ZighangPublicCrawler
+    from .crawlers.aggregators import ZighangPublicCrawler
     from .crawlers.zighang_public import COMPANY_SOURCE
     statuses = {}
     deadline = time.monotonic() + budget
-    for source, cls, limit in [('inthiswork', InThisWorkPublicCrawler, 5000), ('zighang', ZighangPublicCrawler, 100)]:
+    with SessionLocal() as db:
+        known_wp = list(db.scalars(select(Job.external_id).where(Job.source_id == 'inthiswork')))
+    for source, cls, limit in [('inthiswork', DevelopmentInThisWorkCrawler, 5000), ('zighang', ZighangPublicCrawler, 100)]:
         try:
             while time.monotonic() < deadline:
-                allowance = min(120, deadline - time.monotonic()) if source == 'inthiswork' else deadline - time.monotonic()
+                allowance = min(180, deadline - time.monotonic()) if source == 'inthiswork' else deadline - time.monotonic()
                 async with asyncio.timeout(max(1, allowance)):
-                    run = await run_crawler(cls(store), max_items=limit, recheck_hours=6)
+                    crawler = cls(store, known_ids=known_wp) if source == 'inthiswork' else cls(store)
+                    run = await run_crawler(crawler, max_items=limit, recheck_hours=6)
                 statuses[source] = {'status': run.status, 'seen': run.seen_count,
                                     'created': run.created_count, 'updated': run.updated_count,
                                     'checked_at': utcnow().isoformat()}
@@ -292,7 +320,7 @@ async def collect_cloud(repo, budget=600):
             statuses[source] = {'status': 'limited', 'reason': 'time_budget', 'checked_at': utcnow().isoformat()}
             if time.monotonic() >= deadline:
                 break
-    snapshot = export_snapshot(store=store, statuses=statuses)
+    snapshot = export_snapshot(store=store, statuses=statuses, include_tracked=True)
     await asyncio.to_thread(publish_snapshot, repo, snapshot)
     print(json.dumps({'private_state_saved': True, 'development_jobs': len(snapshot['jobs']), 'sources': statuses}))
 
