@@ -144,19 +144,35 @@ class InThisWorkPublicCrawler(BaseCrawler):
         pages=[first.replace('page=1&orderby',f'page={i}&orderby') for i in range(1,response.total_pages+1)]
         s.active_pages(source,pages)
         s.save_page(source,first,[{'id':str(r['id']),'url':f"https://inthiswork.com/archives/{r['id']}",'revision':r['modified'],'payload':r} for r in data])
-        for url in s.pending_pages(source,self.max_pages or 10000):
+        emitted=set()
+        def listed_refs(rows):
+            listed={str(r['id']) for r in rows}
+            for row in s.due(source,10000):
+                if row['id'] in listed and row['id'] not in emitted:
+                    emitted.add(row['id'])
+                    yield JobRef(row['id'],row['url'],listing_fingerprint=row['revision'],
+                                 payload={'draft':row['payload'],'refresh':False})
+        # Save each accessible page before another request can fail or time out.
+        for ref in listed_refs(data):yield ref
+        pending=set(s.pending_pages(source,10000))
+        # Restored SQLite row order can be lexicographic (1,10,11,...,2).
+        for url in [u for u in pages if u in pending][:self.max_pages or 10000]:
             result=await fetcher.get_response(url)
             rows=json.loads(result.text)
             if not isinstance(rows,list):raise ValueError('WordPress page is not a list')
             s.save_page(source,url,[{'id':str(r['id']),'url':f"https://inthiswork.com/archives/{r['id']}",'revision':r['modified'],'payload':r} for r in rows])
+            for ref in listed_refs(rows):yield ref
         if full_scan and not s.pending_pages(source,1):
             s.meta(source,'last_scan',time.time())
             s.meta(source,'scanned_unique_count',s.scan_count(source,started))
-        if started:
+        complete_scan=bool(started and not s.pending_pages(source,1) and s.scan_count(source,started)==response.total)
+        if complete_scan:
             for row in s.absent(source,started):
                 yield JobRef(row['id'],row['url'],listing_fingerprint='availability:'+str(int(started)),
                              payload={'draft':row['payload'],'refresh':True})
         for row in s.due(source,10000):
+            if row['id'] in emitted:continue
+            if started and row['seen']<started and not complete_scan:continue
             refresh=bool(started and row['seen']<started)
             yield JobRef(row['id'],row['url'],listing_fingerprint=('availability:'+str(int(started))) if refresh else row['revision'],
                          payload={'draft':row['payload'],'refresh':refresh})

@@ -296,17 +296,30 @@ async def collect_cloud(repo, budget=600):
     from .crawlers.aggregators import ZighangPublicCrawler
     from .crawlers.zighang_public import COMPANY_SOURCE
     from .crawlers.zighang_recent import pending_recent, recent_summary
+    from .source_diagnostics import response_evidence, failure_evidence
+    from .fetcher import PoliteFetcher
+    evidence = []
+    def diagnostic_fetcher(hosts):
+        fetcher = PoliteFetcher(hosts)
+        async def observe(response):
+            if response.status_code >= 400:
+                await response.aread()
+                evidence.append(response_evidence(response))
+                del evidence[:-3]
+        fetcher.client.event_hooks['response'] = [observe]
+        return fetcher
     statuses = {}
     deadline = time.monotonic() + budget
     with SessionLocal() as db:
         known_wp = list(db.scalars(select(Job.external_id).where(Job.source_id == 'inthiswork')))
     for source, cls, limit in [('inthiswork', DevelopmentInThisWorkCrawler, 5000), ('zighang', ZighangPublicCrawler, 100)]:
+        evidence.clear()
         try:
             while time.monotonic() < deadline:
                 allowance = min(180, deadline - time.monotonic()) if source == 'inthiswork' else deadline - time.monotonic()
                 async with asyncio.timeout(max(1, allowance)):
                     crawler = cls(store, known_ids=known_wp) if source == 'inthiswork' else cls(store)
-                    run = await run_crawler(crawler, max_items=limit, recheck_hours=6)
+                    run = await run_crawler(crawler, max_items=limit, recheck_hours=6, fetcher_factory=diagnostic_fetcher)
                 statuses[source] = {'status': run.status, 'seen': run.seen_count,
                                     'created': run.created_count, 'updated': run.updated_count,
                                     'checked_at': utcnow().isoformat()}
@@ -314,6 +327,8 @@ async def collect_cloud(repo, budget=600):
                     from .service import failure_status
                     statuses[source]['status'] = failure_status(run.error_summary or '')
                     statuses[source]['reason'] = 'source_access_or_parse_failure'
+                    statuses[source]['failure'] = failure_evidence(run.error_summary or '')
+                    statuses[source]['responses'] = list(evidence)
                     break
                 if source != 'zighang' or not (pending_recent(store, 1) or store.due_discovery_pages(COMPANY_SOURCE, 1) or store.due('zighang', 1, focus='development')):
                     break
