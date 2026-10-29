@@ -12,12 +12,15 @@ INDEX = 'https://zighang.com/seo/sitemap/sitemap-index.xml'
 
 
 def pending_recent(store, limit=10):
-    cutoff = (today_kst() - timedelta(days=7)).isoformat()
     with store.db() as db:
-        return [dict(r) for r in db.execute("""SELECT * FROM aggregate_refs
-            WHERE source=? AND revision>=? AND (state='pending' OR
-            (state='failed' AND checked<?)) ORDER BY revision DESC,rowid LIMIT ?""",
-            (RECENT_SOURCE, cutoff, time.time()-86400, limit))]
+        where = "source=? AND (state='pending' OR (state='failed' AND checked<?))"
+        args = (RECENT_SOURCE, time.time()-86400)
+        # Reserve capacity for old backlog so it neither expires nor starves.
+        old_count = max(1, limit//5) if limit>1 else 0
+        newest = [dict(r) for r in db.execute(f"SELECT * FROM aggregate_refs WHERE {where} ORDER BY revision DESC,rowid LIMIT ?", (*args, limit-old_count))]
+        oldest = [dict(r) for r in db.execute(f"SELECT * FROM aggregate_refs WHERE {where} ORDER BY revision,rowid LIMIT ?", (*args, limit))]
+        seen = {r['id'] for r in newest}
+        return (newest + [r for r in oldest if r['id'] not in seen])[:limit]
 
 
 async def discover_recent(fetcher, store, limit=10):
@@ -27,7 +30,14 @@ async def discover_recent(fetcher, store, limit=10):
         cutoff = (today_kst() - timedelta(days=7)).isoformat()
         pages = sorted((r for r in index if re.fullmatch(
             r'https://zighang.com/seo/sitemap/sitemap-recruitment-\d+\.xml', r[0]) and r[1]>=cutoff),
-            key=lambda r: (r[1], -int(re.search(r'-(\d+)\.xml', r[0])[1])), reverse=True)[:3]
+            key=lambda r: (r[1], -int(re.search(r'-(\d+)\.xml', r[0])[1])), reverse=True)
+        if len(pages)>3:
+            cursor = store.meta(RECENT_SOURCE, 'page_cursor') or 0
+            tail = pages[2:]
+            pages = pages[:2] + [tail[cursor % len(tail)]]
+            next_cursor = cursor + 1
+        else:
+            next_cursor = 0
         if not pages:
             raise ValueError('No recent official recruitment sitemap')
         store.pages(RECENT_SOURCE, [u for u, _ in pages])
@@ -36,8 +46,9 @@ async def discover_recent(fetcher, store, limit=10):
             for target, revision in sitemap_urls(await fetcher.get_text(url)):
                 match = PUBLIC_JOB.fullmatch(target)
                 if match and revision[:10]>=cutoff:
-                    rows.append({'id':match[1].lower(), 'url':target, 'revision':revision[:10]})
+                    rows.append({'id':match[1].lower(), 'url':target, 'revision':revision})
             store.save_page(RECENT_SOURCE, url, rows)
+        store.meta(RECENT_SOURCE, 'page_cursor', next_cursor)
         store.meta(RECENT_SOURCE, 'last_scan', time.time())
     for row in pending_recent(store, limit):
         try:

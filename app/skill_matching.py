@@ -60,7 +60,8 @@ def match_details(job,skills):
     text=(job.title or '')+'\n'+(job.body_text or '')
     matched=[skill for skill in skills if re.search(skill_pattern(skill),text)]
     return {'matched':matched,'not_mentioned':[s for s in skills if s not in matched],
-            'count':len(matched),'selected_count':len(skills)}
+            'count':len(matched),'selected_count':len(skills),
+            'requirements': requirement_mentions(job, skills)}
 
 
 _INDEX_LOCK=threading.Lock()
@@ -79,3 +80,42 @@ def _refresh_skill_index(db):
         if row:row.content_hash=job.content_hash;row.terms=terms
         else:db.add(JobSkillIndex(job_id=job.id,content_hash=job.content_hash,terms=terms))
     if stale:db.commit()
+
+
+SECTION = re.compile(r"(?i)(자격\s*요건|필수\s*(?:요건|사항|조건)|지원\s*자격|requirements|minimum qualifications|우대\s*(?:사항|조건|요건)|preferred qualifications|nice to have|주요\s*업무|담당\s*업무|responsibilities|복리후생|혜택|채용\s*절차|팀\s*소개|기술\s*스택)")
+
+def requirement_mentions(job, skills):
+    """Conservative section-based evidence; a mention is not eligibility proof."""
+    from bs4 import BeautifulSoup
+    raw = job.body_text or ''
+    if re.search(r'<(?:p|div|li|br|h[1-6])\b', raw, re.I):
+        raw = BeautifulSoup(raw, 'html.parser').get_text('\n')
+    parts = SECTION.split(raw)
+    category = 'mentioned'
+    evidence = []
+    for part in parts:
+        if SECTION.fullmatch(part):
+            lower = part.lower()
+            category = ('preferred' if re.search(r'우대|preferred|nice to have', lower)
+                        else 'required' if re.search(r'자격|필수|requirements', lower) else 'mentioned')
+            continue
+        for line in re.split(r'[\n\r]+', part):
+            line = line.strip()
+            if not line: continue
+            for skill in skills:
+                match = re.search(skill_pattern(skill), line)
+                if not match: continue
+                kind = category
+                # Explicit sentence-level preference overrides the surrounding section.
+                if re.search(r'우대|preferred|nice to have', line, re.I): kind = 'preferred'
+                elif re.search(r'필수|must have|required', line, re.I): kind = 'required'
+                snippet = line[max(0, match.start()-70):match.end()+150]
+                item = {'skill': skill, 'category': kind, 'evidence': snippet}
+                if item not in evidence: evidence.append(item)
+    for skill in skills:
+        if re.search(skill_pattern(skill), job.title or '') and not any(e['skill']==skill for e in evidence):
+            evidence.append({'skill':skill, 'category':'mentioned', 'evidence':job.title})
+    return {'required': sorted({e['skill'] for e in evidence if e['category']=='required'}),
+            'preferred': sorted({e['skill'] for e in evidence if e['category']=='preferred'}),
+            'mentioned': sorted({e['skill'] for e in evidence if e['category']=='mentioned'}),
+            'evidence': evidence[:100], 'method':'section_and_explicit_wording'}

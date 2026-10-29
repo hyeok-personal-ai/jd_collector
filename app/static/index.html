@@ -146,7 +146,7 @@ function render(items){
     const expired=j.source_status==='closed'||(j.deadline_on&&j.deadline_on<today);
     meta.append(el('span',expired?'· 마감 확인 / 마감일 경과':(j.deadline_on?'· 마감 '+j.deadline_on:(j.deadline_text?'· '+j.deadline_text:'· 마감일 미정')),expired?'pill expired':'pill'));
     card.append(meta);
-    if(j.skill_match){const m=j.skill_match;card.append(el('p','내 기술 '+m.count+'/'+m.selected_count+'개 언급 · '+m.matched.join(' · '),'small-note'));}
+    if(j.skill_match){const m=j.skill_match;card.append(el('p','내 기술 '+m.count+'/'+m.selected_count+'개 언급 · '+m.matched.join(' · '),'small-note'));if(m.requirements){const r=m.requirements;for(const [key,label] of [['required','필수·자격요건'],['preferred','우대사항'],['mentioned','일반 언급']]){if(r[key].length)card.append(el('p',label+': '+r[key].join(' · '),'small-note'));}const detail=el('details');detail.append(el('summary','기술 구분 근거 보기'));detail.append(el('p','원문 구역과 표현에 따른 자동 분류입니다. 단순 언급이나 대안 기술도 포함될 수 있으며 지원 자격 충족을 보장하지 않습니다.'));for(const e of r.evidence){detail.append(el('p',({'required':'필수·자격요건','preferred':'우대','mentioned':'일반 언급'}[e.category])+' / '+e.skill+' — '+e.evidence,'small-note'));}card.append(detail);}}
     const h2=el('h2'), a=el('a',j.title);a.href=safeUrl(j.original_url);a.target='_blank';a.rel='noopener noreferrer';h2.append(a);card.append(h2);
     if(j.body_text)card.append(el('p',j.body_text.slice(0,180)+(j.body_text.length>180?'…':''),'desc'));
     const foot=el('div',null,'meta');if(j.posted_on)foot.append(el('span','등록 '+j.posted_on));

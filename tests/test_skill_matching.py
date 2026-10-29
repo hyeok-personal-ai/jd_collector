@@ -89,3 +89,17 @@ def test_skill_index_refreshes_after_collected_content_changes(client):
     assert result['total'] == 1
     assert result['items'][0]['skill_match']['matched'] == ['Kafka']
     assert client.get('/api/jobs', params={'skills': 'Java', 'open_only': True}).json()['total'] == 1
+
+
+def test_requirement_sections_and_evidence():
+    from types import SimpleNamespace
+    from app.skill_matching import requirement_mentions
+    job = SimpleNamespace(title='Java 서버 개발자', body_text='<h2>자격요건</h2><p>Java 또는 Python 경험</p><h2>우대사항</h2><p>AWS, Docker 경험</p><h2>주요업무</h2><p>Redis 운영</p>')
+    result = requirement_mentions(job, ['Java','Python','AWS','Docker','Redis'])
+    assert result['required'] == ['Java','Python']
+    assert result['preferred'] == ['AWS','Docker']
+    assert result['mentioned'] == ['Redis']
+    assert any('또는' in e['evidence'] for e in result['evidence'])
+    result = requirement_mentions(SimpleNamespace(title='',body_text='Python 개발\nRedis 경험 우대'), ['Python','Redis'])
+    assert result['required'] == []
+    assert result['mentioned'] == ['Python'] and result['preferred'] == ['Redis']

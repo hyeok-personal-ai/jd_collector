@@ -86,3 +86,36 @@ def test_current_wordpress_coverage_does_not_count_historical_failure(tmp_path):
     assert not result['complete']  # Historical error remains visible, not deleted.
     store.mark('inthiswork','new','failed')
     assert not store.summary('inthiswork')['current_list_complete']
+
+
+def test_backlog_does_not_expire_and_newest_and_oldest_both_progress(tmp_path):
+    store=AggregateStore(tmp_path/'inventory.sqlite')
+    rows=[{'id':str(i),'url':'https://example.org/'+str(i),'revision':'2020-01-01' if i==0 else today_kst().isoformat()} for i in range(20)]
+    store.save_page(RECENT_SOURCE,'x',rows)
+    batch=pending_recent(store,10)
+    assert len(batch)==10 and len({r['id'] for r in batch})==10
+    assert '0' in {r['id'] for r in batch}
+    store.mark(RECENT_SOURCE,'1','done')
+    store.save_page(RECENT_SOURCE,'x',[{**rows[1],'revision':today_kst().isoformat()+'T18:00:00Z'}])
+    assert '1' in {r['id'] for r in pending_recent(store,10)}
+
+
+def test_sitemap_rotation_and_full_timestamp_revision(tmp_path):
+    store=AggregateStore(tmp_path/'inventory.sqlite')
+    pages=['https://zighang.com/seo/sitemap/sitemap-recruitment-'+str(i)+'.xml' for i in range(1,6)]
+    job='https://zighang.com/recruitment/00000000-0000-0000-0000-000000000001'
+    stamp=today_kst().isoformat()+'T01:02:03Z'
+    class Fetcher:
+        calls=[]
+        async def get_text(self,url):
+            self.calls.append(url)
+            targets=pages if url==INDEX else [job]
+            return '<urlset>'+''.join('<url><loc>'+u+'</loc><lastmod>'+stamp+'</lastmod></url>' for u in targets)+'</urlset>'
+    f=Fetcher()
+    asyncio.run(discover_recent(f,store,limit=0))
+    assert f.calls==[INDEX,*pages[:3]]
+    assert pending_recent(store,1)[0]['revision']==stamp
+    store.meta(RECENT_SOURCE,'last_scan',0)
+    f.calls=[]
+    asyncio.run(discover_recent(f,store,limit=0))
+    assert f.calls==[INDEX,pages[0],pages[1],pages[3]]
