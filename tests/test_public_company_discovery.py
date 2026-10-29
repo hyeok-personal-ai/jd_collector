@@ -44,6 +44,7 @@ def test_wordpress_challenge_stops_before_any_content_request(status):
 def test_company_snapshot_avoids_per_post_http_and_ignores_view_changes(tmp_path):
     store=AggregateStore(tmp_path/'inventory.sqlite');store.meta('zighang','collection_mode','development')
     store.pages(COMPANY_SOURCE,[COMPANY])
+    store.meta('zighang_recent','last_scan',time.time())
     class Fetcher:
         def __init__(self):self.requests=[]
         async def get_text(self,url,**kwargs):

@@ -29,6 +29,8 @@ def test_focus_keeps_general_inventory_but_never_fetches_it(tmp_path):
         {'id':ID,'url':URL,'revision':'source-revision'}])
     store.add_focus('zighang',[{'id':ID,'url':URL}])
     store.meta('zighang','collection_mode','development')
+    import time
+    store.meta('zighang_recent','last_scan',time.time())
     class NoNetwork:
         async def get_text(self,*args,**kwargs):raise AssertionError('Focused discovery must not scan broad sitemaps')
     async def discover():

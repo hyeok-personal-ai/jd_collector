@@ -138,13 +138,13 @@ def export_snapshot(factory=SessionLocal, store=None, statuses=None, *, include_
     with store.db() as db:
         focus = [dict(r) for r in db.execute("SELECT * FROM aggregate_focus WHERE source='zighang' AND focus='development'")]
         focus_keys = {(r['source'], r['id']) for r in focus}
-        refs = [dict(r) for r in db.execute("SELECT r.* FROM aggregate_refs r WHERE source='inthiswork' OR (source='zighang' AND EXISTS (SELECT 1 FROM aggregate_focus f WHERE f.source=r.source AND f.id=r.id AND f.focus='development'))")
-                if r['source'] == 'inthiswork' or (r['source'], r['id']) in keys | focus_keys]
+        refs = [dict(r) for r in db.execute("SELECT r.* FROM aggregate_refs r WHERE source IN ('inthiswork','zighang_recent') OR (source='zighang' AND EXISTS (SELECT 1 FROM aggregate_focus f WHERE f.source=r.source AND f.id=r.id AND f.focus='development'))")
+                if r['source'] in ('inthiswork','zighang_recent') or (r['source'], r['id']) in keys | focus_keys]
         for row in refs:
             if row['source'] == 'inthiswork' and row['recheck_mode'] == 'ignored':
                 row['payload'] = None  # Preserve scan position without retaining non-development bodies.
-        pages = [dict(r) for r in db.execute("SELECT * FROM aggregate_pages WHERE source IN ('zighang_company','inthiswork')")]
-        meta = [dict(r) for r in db.execute("SELECT * FROM aggregate_meta WHERE source='inthiswork'")]
+        pages = [dict(r) for r in db.execute("SELECT * FROM aggregate_pages WHERE source IN ('zighang_company','inthiswork','zighang_recent')")]
+        meta = [dict(r) for r in db.execute("SELECT * FROM aggregate_meta WHERE source IN ('inthiswork','zighang_recent')")]
     return {'version': 1, 'generated_at': utcnow().isoformat(), 'jobs': jobs,
             'inventory': {'aggregate_refs': refs, 'aggregate_focus': focus, 'aggregate_pages': pages, 'aggregate_meta': meta},
             'source_status': statuses or {}}
@@ -196,7 +196,7 @@ def restore_inventory(doc, store):
         for table in ('aggregate_refs', 'aggregate_focus', 'aggregate_pages', 'aggregate_meta'):
             columns = [r[1] for r in db.execute(f'PRAGMA table_info({table})')]
             for row in doc.get('inventory', {}).get(table, []):
-                if row.get('source') not in ('zighang', 'inthiswork', 'zighang_company'):
+                if row.get('source') not in ('zighang', 'inthiswork', 'zighang_company', 'zighang_recent'):
                     raise ValueError('Invalid cloud inventory source')
                 names = [c for c in columns if c in row]
                 db.execute(f"INSERT OR REPLACE INTO {table}({','.join(names)}) VALUES({','.join('?' for _ in names)})",
@@ -295,6 +295,7 @@ async def collect_cloud(repo, budget=600):
     restore_inventory(doc, store)
     from .crawlers.aggregators import ZighangPublicCrawler
     from .crawlers.zighang_public import COMPANY_SOURCE
+    from .crawlers.zighang_recent import pending_recent, recent_summary
     statuses = {}
     deadline = time.monotonic() + budget
     with SessionLocal() as db:
@@ -314,12 +315,13 @@ async def collect_cloud(repo, budget=600):
                     statuses[source]['status'] = failure_status(run.error_summary or '')
                     statuses[source]['reason'] = 'source_access_or_parse_failure'
                     break
-                if source != 'zighang' or not (store.due_discovery_pages(COMPANY_SOURCE, 1) or store.due('zighang', 1, focus='development')):
+                if source != 'zighang' or not (pending_recent(store, 1) or store.due_discovery_pages(COMPANY_SOURCE, 1) or store.due('zighang', 1, focus='development')):
                     break
         except TimeoutError:
             statuses[source] = {'status': 'limited', 'reason': 'time_budget', 'checked_at': utcnow().isoformat()}
             if time.monotonic() >= deadline:
                 break
+    statuses.setdefault('zighang', {})['recent_discovery'] = recent_summary(store)
     snapshot = export_snapshot(store=store, statuses=statuses, include_tracked=True)
     await asyncio.to_thread(publish_snapshot, repo, snapshot)
     print(json.dumps({'private_state_saved': True, 'development_jobs': len(snapshot['jobs']), 'sources': statuses}))

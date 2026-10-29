@@ -31,7 +31,8 @@ async def collect_task(task, settings):
             summary['pages'].get('pending') or summary['inventory'].get('pending'))
         if focused:
             from .crawlers.zighang_public import COMPANY_SOURCE
-            remaining=remaining or bool(crawler.store.due_discovery_pages(COMPANY_SOURCE,1))
+            from .crawlers.zighang_recent import pending_recent
+            remaining=remaining or bool(pending_recent(crawler.store,1) or crawler.store.due_discovery_pages(COMPANY_SOURCE,1))
         if remaining:
             from .database import SessionLocal,CrawlRun
             with SessionLocal() as db:

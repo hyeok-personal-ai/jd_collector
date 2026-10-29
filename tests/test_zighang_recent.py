@@ -1,0 +1,70 @@
+import asyncio
+import json
+import time
+import pytest
+from app.aggregate_store import AggregateStore
+from app.crawlers.zighang_recent import discover_recent, pending_recent, RECENT_SOURCE, INDEX
+from app.deadline_policy import today_kst
+
+
+def test_recent_discovery_resumes_filters_and_persists_without_nondev_bodies(tmp_path):
+    store=AggregateStore(tmp_path/'inventory.sqlite')
+    ids=['00000000-0000-0000-0000-00000000000'+str(i) for i in range(1,4)]
+    urls=['https://zighang.com/recruitment/'+i for i in ids]
+    sitemap='https://zighang.com/seo/sitemap/sitemap-recruitment-1.xml'
+    def xml(items):
+        return '<urlset>'+''.join('<url><loc>'+u+'</loc><lastmod>'+today_kst().isoformat()+'</lastmod></url>' for u in items)+'</urlset>'
+    class Fetcher:
+        calls=[]
+        async def get_text(self,url):
+            self.calls.append(url)
+            if url==INDEX:return xml([sitemap,'https://evil.example/sitemap-recruitment-2.xml'])
+            if url==sitemap:return xml(urls)
+            row={'id':url.rsplit('/',1)[1],'title':'영업 담당자' if url==urls[0] else '백엔드 개발자',
+                 'status':'EXPIRED' if url==urls[2] else 'ACTIVE','deadlineType':'상시',
+                 'content':{'type':'doc','content':[{'type':'text','text':'fixture body'}]}}
+            return '<script>self.__next_f.push('+json.dumps([1,'1:'+json.dumps(row)+'\n'])+')</script>'
+    f=Fetcher()
+    asyncio.run(discover_recent(f,store,limit=1))
+    assert len(pending_recent(store))==2
+    assert store.focus_summary('zighang')=={}
+    asyncio.run(discover_recent(f,store,limit=10))
+    assert f.calls==[INDEX,sitemap,*urls]
+    assert store.focus_summary('zighang')=={'pending':1}
+    with store.db() as db:
+        assert all(r[0] is None for r in db.execute('SELECT payload FROM aggregate_refs WHERE source=?',(RECENT_SOURCE,)))
+    assert pending_recent(store)==[]
+
+
+def test_access_denial_stops_batch_and_cools_down(tmp_path):
+    store=AggregateStore(tmp_path/'inventory.sqlite')
+    store.meta(RECENT_SOURCE,'last_scan',time.time())
+    store.save_page(RECENT_SOURCE,'x',[{'id':str(i),'url':'https://zighang.com/recruitment/'+str(i),'revision':today_kst().isoformat()} for i in range(2)])
+    class Fetcher:
+        calls=0
+        async def get_text(self,url):
+            self.calls+=1
+            raise PermissionError('robots challenge')
+    f=Fetcher()
+    with pytest.raises(PermissionError):asyncio.run(discover_recent(f,store))
+    assert f.calls==1
+    assert len(pending_recent(store))==1
+
+
+def test_private_snapshot_preserves_recent_scan_cursor(tmp_path,monkeypatch):
+    from app import cloud
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+    from app.database import Base
+    engine=create_engine('sqlite://')
+    Base.metadata.create_all(engine)
+    store=AggregateStore(tmp_path/'first.sqlite')
+    store.meta(RECENT_SOURCE,'last_scan',123)
+    store.pages(RECENT_SOURCE,['https://zighang.com/seo/sitemap/sitemap-recruitment-1.xml'])
+    store.save_page(RECENT_SOURCE,'x',[{'id':'candidate','url':'https://zighang.com/recruitment/candidate','revision':today_kst().isoformat()}])
+    snapshot=cloud.export_snapshot(sessionmaker(bind=engine),store)
+    restored=AggregateStore(tmp_path/'second.sqlite')
+    cloud.restore_inventory(snapshot,restored)
+    assert restored.meta(RECENT_SOURCE,'last_scan')==123
+    assert pending_recent(restored)[0]['id']=='candidate'
+    engine.dispose()

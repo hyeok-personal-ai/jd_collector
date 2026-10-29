@@ -105,6 +105,8 @@ def aggregate_status(session: SessionDep):
         if source=='zighang':
             from .crawlers.zighang_public import COMPANY_SOURCE
             item['company_discovery']=store.discovery_summary(COMPANY_SOURCE)
+            from .crawlers.zighang_recent import recent_summary
+            item['recent_discovery']=recent_summary(store)
         items.append(item)
     return {'captured_at': now.isoformat(), 'items': items}
 

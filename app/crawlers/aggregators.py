@@ -198,7 +198,9 @@ class ZighangPublicCrawler(BaseCrawler):
         s=self.store;source=self.site_id
         if s.meta(source,'collection_mode') == 'development':
             from .zighang_public import COMPANY_SOURCE,public_rows,company_candidates,company_urls
-            s.meta(source,'scope','공개 기업 첫 목록·관련 공고에서 새 개발 공고 발견; 전체 기업·전체 페이지 확보를 뜻하지 않음')
+            s.meta(source,'scope','공개 기업 목록·관련 공고·최근 7일 공식 사이트맵 최대 3개에서 개발 공고 발견; 전체 확보 아님')
+            from .zighang_recent import discover_recent
+            await discover_recent(fetcher,s)
             for url in s.due_discovery_pages(COMPANY_SOURCE,5):
                 try:
                     html=await fetcher.get_text(url)
