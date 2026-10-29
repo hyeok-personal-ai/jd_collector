@@ -1,0 +1,1046 @@
+{
+  "29cm": {
+    "url": "https://www.musinsacareers.com/ko/home#f9221335-0b3f-4011-b3ac-1ed1a0e34984",
+    "evidence": [
+      {
+        "from": "https://www.musinsacareers.com/ko/home",
+        "url": "https://www.musinsacareers.com/ko/home#f9221335-0b3f-4011-b3ac-1ed1a0e34984",
+        "text": "채용 중인 공고",
+        "type": "visible career link"
+      }
+    ],
+    "checked_on": "2026-10-26"
+  },
+  "42dot": {
+    "url": "https://42dot.ai/ko/careers/teams/engineering",
+    "evidence": [
+      {
+        "from": "https://42dot.ai/",
+        "url": "https://42dot.ai/ko",
+        "type": "HTTP redirect",
+        "status": 307
+      },
+      {
+        "from": "https://42dot.ai/ko",
+        "url": "https://42dot.ai/ko/careers/open-roles",
+        "text": "Open Roles",
+        "type": "visible career link"
+      },
+      {
+        "from": "https://42dot.ai/ko/careers/open-roles",
+        "url": "https://42dot.ai/ko/careers/open-roles/d7485cf8-b87e-41f6-95c0-8207f344dab5",
+        "text": "Talent Recruiter Human Resources (HR) Full-time 42dot Sunnyvale, United States",
+        "type": "visible career link"
+      },
+      {
+        "from": "https://42dot.ai/ko/careers/open-roles/d7485cf8-b87e-41f6-95c0-8207f344dab5",
+        "url": "https://42dot.ai/ko/careers/open-roles/d7485cf8-b87e-41f6-95c0-8207f344dab5#main-content",
+        "text": "본문 바로가기",
+        "type": "visible career link"
+      },
+      {
+        "from": "https://42dot.ai/ko/careers/open-roles/d7485cf8-b87e-41f6-95c0-8207f344dab5#main-content",
+        "url": "https://42dot.ai/ko/careers/teams/engineering",
+        "text": "Teams",
+        "type": "visible career link"
+      }
+    ],
+    "checked_on": "2026-10-26"
+  },
+  "ably": {
+    "url": "https://ably.team/recruit",
+    "evidence": [
+      {
+        "from": "https://ably.team/",
+        "url": "https://ably.team/recruit",
+        "text": "채용공고",
+        "type": "visible career link"
+      }
+    ],
+    "checked_on": "2026-10-26"
+  },
+  "ahnlab": {
+    "url": "https://ahnlab.recruiter.co.kr/career/home",
+    "evidence": [
+      {
+        "from": "https://www.ahnlab.com/",
+        "url": "https://www.ahnlab.com/ko",
+        "type": "HTTP redirect",
+        "status": 301
+      },
+      {
+        "from": "https://www.ahnlab.com/ko",
+        "url": "https://ahnlab.recruiter.co.kr/career",
+        "text": "AhnLab Careers 함께 성장할 수 있는 기회 안랩 채용에 지원해 보세요.",
+        "type": "visible career link"
+      },
+      {
+        "from": "https://ahnlab.recruiter.co.kr/career",
+        "url": "https://ahnlab.recruiter.co.kr/career/home",
+        "type": "HTTP redirect",
+        "status": 308
+      }
+    ],
+    "checked_on": "2026-10-26"
+  },
+  "autocrypt": {
+    "url": "https://autocrypt.io/company/careers/#content",
+    "evidence": [
+      {
+        "from": "https://www.autocrypt.io/",
+        "url": "https://autocrypt.io/",
+        "type": "HTTP redirect",
+        "status": 301
+      },
+      {
+        "from": "https://autocrypt.io/",
+        "url": "https://autocrypt.io/company/careers/",
+        "text": "Careers",
+        "type": "visible career link"
+      },
+      {
+        "from": "https://autocrypt.io/company/careers/",
+        "url": "https://autocrypt.io/company/careers/#content",
+        "text": "Skip to content",
+        "type": "visible career link"
+      }
+    ],
+    "checked_on": "2026-10-26"
+  },
+  "bagelcode": {
+    "url": "https://www.bagelcode.com/career/#top",
+    "evidence": [
+      {
+        "from": "https://www.bagelcode.com/",
+        "url": "https://www.bagelcode.com/career/",
+        "text": "CULTURE",
+        "type": "visible career link"
+      },
+      {
+        "from": "https://www.bagelcode.com/career/",
+        "url": "https://www.bagelcode.com/career/#primary",
+        "text": "Skip to content",
+        "type": "visible career link"
+      },
+      {
+        "from": "https://www.bagelcode.com/career/#primary",
+        "url": "https://www.bagelcode.com/career/#jobs-0",
+        "text": "전체",
+        "type": "visible career link"
+      },
+      {
+        "from": "https://www.bagelcode.com/career/#jobs-0",
+        "url": "https://www.bagelcode.com/career/#top",
+        "text": "",
+        "type": "visible career link"
+      }
+    ],
+    "checked_on": "2026-10-26"
+  },
+  "cj_group": {
+    "url": "https://cjamerica.applicantstack.com/x/not_found/jobboard",
+    "evidence": [
+      {
+        "from": "https://recruit.cj.net/recruit/ko/main/main/main.fo",
+        "url": "https://recruit.cj.net/recruit/ko/recruit/recruit/list.fo",
+        "text": "채용공고",
+        "type": "visible career link"
+      },
+      {
+        "from": "https://recruit.cj.net/recruit/ko/recruit/recruit/list.fo",
+        "url": "https://recruit.cj.net/recruit/ko/recruit/guide/guide.fo",
+        "text": "채용 안내",
+        "type": "visible career link"
+      },
+      {
+        "from": "https://recruit.cj.net/recruit/ko/recruit/guide/guide.fo",
+        "url": "https://recruit.cj.net/recruit/ko/recruit/job_inside/job_preview.fo",
+        "text": "[채용 홈페이지 직무 안내 바로가기]",
+        "type": "visible career link"
+      },
+      {
+        "from": "https://recruit.cj.net/recruit/ko/recruit/job_inside/job_preview.fo",
+        "url": "https://cjamerica.applicantstack.com/x/openings",
+        "text": "USA YES,  I will go find out more on the USA recruit information.",
+        "type": "visible career link"
+      },
+      {
+        "from": "https://cjamerica.applicantstack.com/x/openings",
+        "url": "https://cjamerica.applicantstack.com/x/not_found/jobboard",
+        "type": "HTTP redirect",
+        "status": 302
+      }
+    ],
+    "checked_on": "2026-10-26"
+  },
+  "class101": {
+    "url": "https://class101.net/ko",
+    "evidence": [
+      {
+        "from": "https://class101.net/",
+        "url": "https://class101.net/ko",
+        "type": "HTTP redirect",
+        "status": 307
+      }
+    ],
+    "checked_on": "2026-10-26"
+  },
+  "deepbio": {
+    "url": "https://www.deepbio.co.kr/career/#Contact",
+    "evidence": [
+      {
+        "from": "https://www.deepbio.co.kr/",
+        "url": "https://www.deepbio.co.kr/career/",
+        "text": "Career",
+        "type": "visible career link"
+      },
+      {
+        "from": "https://www.deepbio.co.kr/career/",
+        "url": "https://www.deepbio.co.kr/career/#Contact",
+        "text": "Contact Us",
+        "type": "visible career link"
+      }
+    ],
+    "checked_on": "2026-10-26"
+  },
+  "elevenst": {
+    "url": "https://11st.career.greetinghr.com/ko/career",
+    "evidence": [
+      {
+        "from": "https://www.11stcorp.com/",
+        "url": "https://www.11stcorp.com/career",
+        "text": "인재채용",
+        "type": "visible career link"
+      },
+      {
+        "from": "https://www.11stcorp.com/career",
+        "url": "https://11st.career.greetinghr.com/",
+        "text": "채용 사이트 바로가기",
+        "type": "visible career link"
+      },
+      {
+        "from": "https://11st.career.greetinghr.com/",
+        "url": "https://11st.career.greetinghr.com/ko",
+        "type": "HTTP redirect",
+        "status": 301
+      },
+      {
+        "from": "https://11st.career.greetinghr.com/ko",
+        "url": "https://11st.career.greetinghr.com/ko/career",
+        "type": "HTTP redirect",
+        "status": 301
+      }
+    ],
+    "checked_on": "2026-10-26"
+  },
+  "elice": {
+    "url": "https://elice.partners",
+    "evidence": [
+      {
+        "from": "https://elice.io/",
+        "url": "https://elice.io/en",
+        "type": "HTTP redirect",
+        "status": 308
+      },
+      {
+        "from": "https://elice.io/en",
+        "url": "https://elice.partners",
+        "text": "Education Partners Recruiting",
+        "type": "visible career link"
+      }
+    ],
+    "checked_on": "2026-10-26"
+  },
+  "estsoft": {
+    "url": "https://estfamily.career.greetinghr.com/ko/home",
+    "evidence": [
+      {
+        "from": "https://www.estsoft.ai/",
+        "url": "https://estsoft.ai/",
+        "type": "HTTP redirect",
+        "status": 308
+      },
+      {
+        "from": "https://estsoft.ai/",
+        "url": "https://estfamily.career.greetinghr.com/",
+        "text": "Recruit",
+        "type": "visible career link"
+      },
+      {
+        "from": "https://estfamily.career.greetinghr.com/",
+        "url": "https://estfamily.career.greetinghr.com/ko",
+        "type": "HTTP redirect",
+        "status": 301
+      },
+      {
+        "from": "https://estfamily.career.greetinghr.com/ko",
+        "url": "https://estfamily.career.greetinghr.com/ko/home",
+        "type": "HTTP redirect",
+        "status": 301
+      }
+    ],
+    "checked_on": "2026-10-26"
+  },
+  "finda": {
+    "url": "https://finda.co.kr/culture",
+    "evidence": [
+      {
+        "from": "https://www.finda.co.kr/",
+        "url": "https://finda.co.kr/culture",
+        "text": "채용",
+        "type": "visible career link"
+      }
+    ],
+    "checked_on": "2026-10-26"
+  },
+  "flex": {
+    "url": "https://flex.team/landing/service/recruiting#seamless-post-hire-experience",
+    "evidence": [
+      {
+        "from": "https://flex.team/",
+        "url": "https://flex.team/landing/service/recruiting",
+        "text": "채용",
+        "type": "visible career link"
+      },
+      {
+        "from": "https://flex.team/landing/service/recruiting",
+        "url": "https://flex.team/landing/service/recruiting#hiring-dashboard",
+        "text": "한 눈에 보는 채용 대시보드",
+        "type": "visible career link"
+      },
+      {
+        "from": "https://flex.team/landing/service/recruiting#hiring-dashboard",
+        "url": "https://flex.team/landing/service/recruiting#quick-job-posting-with-ai",
+        "text": "빠른 채용을 위한 공고와 사이트를 AI로 몇 분 만에",
+        "type": "visible career link"
+      },
+      {
+        "from": "https://flex.team/landing/service/recruiting#quick-job-posting-with-ai",
+        "url": "https://flex.team/landing/service/recruiting#efficient-hiring-ops",
+        "text": "반복을 줄이는 채용 오퍼레이션의 효율화",
+        "type": "visible career link"
+      },
+      {
+        "from": "https://flex.team/landing/service/recruiting#efficient-hiring-ops",
+        "url": "https://flex.team/landing/service/recruiting#seamless-post-hire-experience",
+        "text": "채용 이후까지 연결되는 경험",
+        "type": "visible career link"
+      }
+    ],
+    "checked_on": "2026-10-26"
+  },
+  "goorm": {
+    "url": "https://www.goorm.io/career/f80132ec-4dca-4110-abe6-9a260b811060",
+    "evidence": [
+      {
+        "from": "https://goorm.io/",
+        "url": "https://www.goorm.io/",
+        "type": "HTTP redirect",
+        "status": 308
+      },
+      {
+        "from": "https://www.goorm.io/",
+        "url": "https://www.goorm.io/career",
+        "text": "채용",
+        "type": "visible career link"
+      },
+      {
+        "from": "https://www.goorm.io/career",
+        "url": "https://www.goorm.io/career/f80132ec-4dca-4110-abe6-9a260b811060",
+        "text": "소프트웨어 엔지니어",
+        "type": "visible career link"
+      }
+    ],
+    "checked_on": "2026-10-26"
+  },
+  "hancom": {
+    "url": "https://hancom.career.greetinghr.com/ko/guide",
+    "evidence": [
+      {
+        "from": "https://www.hancom.com/",
+        "url": "https://hancom.career.greetinghr.com",
+        "text": "인재채용",
+        "type": "visible career link"
+      },
+      {
+        "from": "https://hancom.career.greetinghr.com",
+        "url": "https://hancom.career.greetinghr.com/ko",
+        "type": "HTTP redirect",
+        "status": 301
+      },
+      {
+        "from": "https://hancom.career.greetinghr.com/ko",
+        "url": "https://hancom.career.greetinghr.com/ko/guide",
+        "type": "HTTP redirect",
+        "status": 301
+      }
+    ],
+    "checked_on": "2026-10-26"
+  },
+  "hyundai_motors": {
+    "url": "https://talent.hyundai.com/main/netFunnel.hc",
+    "evidence": [
+      {
+        "from": "https://talent.hyundai.com/",
+        "url": "https://talent.hyundai.com/main/netFunnel.hc",
+        "type": "HTTP redirect",
+        "status": 302
+      }
+    ],
+    "checked_on": "2026-10-26"
+  },
+  "kakaobank": {
+    "url": "https://recruit.kakaobank.com/",
+    "evidence": [
+      {
+        "from": "https://recruit.kakaobank.com/jobs",
+        "url": "https://recruit.kakaobank.com/",
+        "text": "인재영입 카카오뱅크 인재영입",
+        "type": "visible career link"
+      }
+    ],
+    "checked_on": "2026-10-26"
+  },
+  "kakaogames": {
+    "url": "https://www.kakaogamescorp.com/career/story?page=2#menuContent",
+    "evidence": [
+      {
+        "from": "https://recruit.kakaogames.com/ko/homeen",
+        "url": "https://recruit.kakaogames.com/ko/joinjuskr",
+        "text": "Join Us",
+        "type": "visible career link"
+      },
+      {
+        "from": "https://recruit.kakaogames.com/ko/joinjuskr",
+        "url": "https://recruit.kakaogames.com/ko/o/240754",
+        "text": "[체험형 인턴] 게임 운영 인턴 채용 운영 운영PM 인턴 카카오게임즈 2026. 11. 15, 14:59까지 D -20",
+        "type": "visible career link"
+      },
+      {
+        "from": "https://recruit.kakaogames.com/ko/o/240754",
+        "url": "https://www.kakaogamescorp.com/career/story?page=2",
+        "text": "KREW STORY",
+        "type": "visible career link"
+      },
+      {
+        "from": "https://www.kakaogamescorp.com/career/story?page=2",
+        "url": "https://www.kakaogamescorp.com/career/story?page=2#mainContent",
+        "text": "본문 바로가기",
+        "type": "visible career link"
+      },
+      {
+        "from": "https://www.kakaogamescorp.com/career/story?page=2#mainContent",
+        "url": "https://www.kakaogamescorp.com/career/story?page=2#menuContent",
+        "text": "메뉴 바로가기",
+        "type": "visible career link"
+      }
+    ],
+    "checked_on": "2026-10-26"
+  },
+  "kakaopay": {
+    "url": "https://careers.kakaopay.com/ko/main",
+    "evidence": [
+      {
+        "from": "https://kakaopay.career.greetinghr.com/ko/main",
+        "url": "https://careers.kakaopay.com/main",
+        "type": "HTTP redirect",
+        "status": 301
+      },
+      {
+        "from": "https://careers.kakaopay.com/main",
+        "url": "https://careers.kakaopay.com/ko/main",
+        "type": "HTTP redirect",
+        "status": 301
+      }
+    ],
+    "checked_on": "2026-10-26"
+  },
+  "kakaopiccoma": {
+    "url": "https://www.kakaopiccoma.com/recruit",
+    "evidence": [
+      {
+        "from": "https://www.kakaopiccoma.com/",
+        "url": "https://www.kakaopiccoma.com/recruit",
+        "text": "採用情報",
+        "type": "visible career link"
+      },
+      {
+        "from": "https://www.kakaopiccoma.com/recruit",
+        "url": "https://www.kakaopiccoma.com/recruit/#recruit",
+        "text": "募集情報",
+        "type": "visible career link"
+      },
+      {
+        "from": "https://www.kakaopiccoma.com/recruit/#recruit",
+        "url": "https://www.kakaopiccoma.com/recruit",
+        "type": "HTTP redirect",
+        "status": 301
+      }
+    ],
+    "checked_on": "2026-10-26"
+  },
+  "konantech": {
+    "url": "https://www.konantech.com/company/careers",
+    "evidence": [
+      {
+        "from": "https://www.konantech.com/",
+        "url": "https://www.konantech.com/company/careers",
+        "text": "N",
+        "type": "visible career link"
+      }
+    ],
+    "checked_on": "2026-10-26"
+  },
+  "kream": {
+    "url": "https://recruit.navercorp.com/main.do",
+    "evidence": [
+      {
+        "from": "https://recruit.navercorp.com/rcrt/list.do",
+        "url": "https://recruit.navercorp.com/main.do",
+        "text": "NAVER Careers",
+        "type": "visible career link"
+      }
+    ],
+    "checked_on": "2026-10-26"
+  },
+  "lg_cns": {
+    "url": "https://www.lgcns.com/kr",
+    "evidence": [
+      {
+        "from": "https://www.lgcns.com/",
+        "url": "https://www.lgcns.com/kr",
+        "type": "HTTP redirect",
+        "status": 302
+      }
+    ],
+    "checked_on": "2026-10-26"
+  },
+  "lg_electronics": {
+    "url": "https://www.lge.co.kr/home",
+    "evidence": [
+      {
+        "from": "https://www.lge.co.kr/",
+        "url": "https://www.lge.co.kr/home",
+        "type": "HTTP redirect",
+        "status": 301
+      }
+    ],
+    "checked_on": "2026-10-26"
+  },
+  "line_friends": {
+    "url": "https://linefriends.com/ko-kr",
+    "evidence": [
+      {
+        "from": "https://www.linefriends.com/",
+        "url": "https://linefriends.com/",
+        "type": "HTTP redirect",
+        "status": 301
+      },
+      {
+        "from": "https://linefriends.com/",
+        "url": "https://linefriends.com/ko-kr",
+        "type": "HTTP redirect",
+        "status": 302
+      }
+    ],
+    "checked_on": "2026-10-26"
+  },
+  "lotte_group": {
+    "url": "https://recruit.lotte.co.kr/needLogin",
+    "evidence": [
+      {
+        "from": "https://recruit.lotte.co.kr/apply/announcement/",
+        "url": "https://recruit.lotte.co.kr/companylife/lrecruitv",
+        "text": "L-RecruiTV",
+        "type": "visible career link"
+      },
+      {
+        "from": "https://recruit.lotte.co.kr/companylife/lrecruitv",
+        "url": "https://recruit.lotte.co.kr/guide/returnrequest",
+        "text": "채용서류반환청구",
+        "type": "visible career link"
+      },
+      {
+        "from": "https://recruit.lotte.co.kr/guide/returnrequest",
+        "url": "https://recruit.lotte.co.kr/needLogin",
+        "type": "HTTP redirect",
+        "status": 302
+      }
+    ],
+    "checked_on": "2026-10-26"
+  },
+  "lunit": {
+    "url": "https://www.lunit.io/ko/careers/#-open-positions-13-636",
+    "evidence": [
+      {
+        "from": "https://www.lunit.io/",
+        "url": "https://www.lunit.io/en/",
+        "type": "HTTP redirect",
+        "status": 301
+      },
+      {
+        "from": "https://www.lunit.io/en/",
+        "url": "https://www.lunit.io/en/careers/",
+        "text": "Careers",
+        "type": "visible career link"
+      },
+      {
+        "from": "https://www.lunit.io/en/careers/",
+        "url": "https://www.lunit.io/ko/careers/",
+        "text": "한국어 ( Korean )",
+        "type": "visible career link"
+      },
+      {
+        "from": "https://www.lunit.io/ko/careers/",
+        "url": "https://www.lunit.io/ko/careers/#-open-positions-13-636",
+        "text": "채용 공고 보기",
+        "type": "visible career link"
+      }
+    ],
+    "checked_on": "2026-10-26"
+  },
+  "makinarocks": {
+    "url": "https://makinarocks.career.greetinghr.com/ko/home",
+    "evidence": [
+      {
+        "from": "https://www.makinarocks.ai/",
+        "url": "https://makinarocks.career.greetinghr.com/",
+        "text": "Careers",
+        "type": "visible career link"
+      },
+      {
+        "from": "https://makinarocks.career.greetinghr.com/",
+        "url": "https://makinarocks.career.greetinghr.com/ko",
+        "type": "HTTP redirect",
+        "status": 301
+      },
+      {
+        "from": "https://makinarocks.career.greetinghr.com/ko",
+        "url": "https://makinarocks.career.greetinghr.com/ko/home",
+        "type": "HTTP redirect",
+        "status": 301
+      }
+    ],
+    "checked_on": "2026-10-26"
+  },
+  "modulabs": {
+    "url": "https://modulabs.career.greetinghr.com/ko/home",
+    "evidence": [
+      {
+        "from": "https://modulabs.co.kr/",
+        "url": "https://modulabs.career.greetinghr.com/",
+        "text": "채용",
+        "type": "visible career link"
+      },
+      {
+        "from": "https://modulabs.career.greetinghr.com/",
+        "url": "https://modulabs.career.greetinghr.com/ko",
+        "type": "HTTP redirect",
+        "status": 301
+      },
+      {
+        "from": "https://modulabs.career.greetinghr.com/ko",
+        "url": "https://modulabs.career.greetinghr.com/ko/home",
+        "type": "HTTP redirect",
+        "status": 301
+      }
+    ],
+    "checked_on": "2026-10-26"
+  },
+  "naver_cloud": {
+    "url": "https://recruit.navercorp.com/main.do",
+    "evidence": [
+      {
+        "from": "https://recruit.navercorp.com/rcrt/list.do?sysCompanyCdArr=NB&sysCompanyCdData=NB",
+        "url": "https://recruit.navercorp.com/main.do",
+        "text": "NAVER Careers",
+        "type": "visible career link"
+      }
+    ],
+    "checked_on": "2026-10-26"
+  },
+  "neowiz": {
+    "url": "https://www.neowiz.com/en/career",
+    "evidence": [
+      {
+        "from": "https://www.neowiz.com/",
+        "url": "https://www.neowiz.com/kr",
+        "type": "HTTP redirect",
+        "status": 301
+      },
+      {
+        "from": "https://www.neowiz.com/kr",
+        "url": "https://www.neowiz.com/kr/career",
+        "text": "인재채용",
+        "type": "visible career link"
+      },
+      {
+        "from": "https://www.neowiz.com/kr/career",
+        "url": "https://www.neowiz.com/kr/career/browse-job",
+        "text": "채용공고",
+        "type": "visible career link"
+      },
+      {
+        "from": "https://www.neowiz.com/kr/career/browse-job",
+        "url": "https://www.neowiz.com/en/career/browse-job",
+        "text": "EN",
+        "type": "visible career link"
+      },
+      {
+        "from": "https://www.neowiz.com/en/career/browse-job",
+        "url": "https://www.neowiz.com/en/career",
+        "text": "CAREERS",
+        "type": "visible career link"
+      }
+    ],
+    "checked_on": "2026-10-26"
+  },
+  "nota": {
+    "url": "https://career.nota.ai/en/o/227871",
+    "evidence": [
+      {
+        "from": "https://www.nota.ai/",
+        "url": "https://career.nota.ai/en/jobs",
+        "text": "Careers",
+        "type": "visible career link"
+      },
+      {
+        "from": "https://career.nota.ai/en/jobs",
+        "url": "https://career.nota.ai/en/o/227871",
+        "text": "[People&Culture] Recruiting Assistant (장애인 채용) Operation Experience irrelevant Fixed-term contract Nota",
+        "type": "visible career link"
+      }
+    ],
+    "checked_on": "2026-10-26"
+  },
+  "paywatch": {
+    "url": "https://www.paywatchglobal.com/",
+    "evidence": [
+      {
+        "from": "https://paywatchglobal.com/",
+        "url": "https://www.paywatchglobal.com/",
+        "type": "HTTP redirect",
+        "status": 301
+      }
+    ],
+    "checked_on": "2026-10-26"
+  },
+  "pearlabyss": {
+    "url": "https://www.pearlabyss.com/ko-KR/Company/Careers/List",
+    "evidence": [
+      {
+        "from": "https://www.pearlabyss.com/",
+        "url": "https://www.pearlabyss.com/ko-KR",
+        "type": "HTTP redirect",
+        "status": 302
+      },
+      {
+        "from": "https://www.pearlabyss.com/ko-KR",
+        "url": "https://www.pearlabyss.com/Company/Careers/Intro",
+        "text": "채용",
+        "type": "visible career link"
+      },
+      {
+        "from": "https://www.pearlabyss.com/Company/Careers/Intro",
+        "url": "https://www.pearlabyss.com/ko-KR/Company/Careers/Intro",
+        "type": "HTTP redirect",
+        "status": 302
+      },
+      {
+        "from": "https://www.pearlabyss.com/ko-KR/Company/Careers/Intro",
+        "url": "https://www.pearlabyss.com/Company/Careers/List",
+        "text": "채용 공고",
+        "type": "visible career link"
+      },
+      {
+        "from": "https://www.pearlabyss.com/Company/Careers/List",
+        "url": "https://www.pearlabyss.com/ko-KR/Company/Careers/List",
+        "type": "HTTP redirect",
+        "status": 302
+      }
+    ],
+    "checked_on": "2026-10-26"
+  },
+  "rebellions": {
+    "url": "https://rebellions.career.greetinghr.com/ko/o/240040",
+    "evidence": [
+      {
+        "from": "https://rebellions.ai/",
+        "url": "https://rebellions.ai/careers/",
+        "text": "Careers",
+        "type": "visible career link"
+      },
+      {
+        "from": "https://rebellions.ai/careers/",
+        "url": "https://rebellions.career.greetinghr.com/o/240040",
+        "text": "[채용전환형 인턴] System Test Engineer",
+        "type": "visible career link"
+      },
+      {
+        "from": "https://rebellions.career.greetinghr.com/o/240040",
+        "url": "https://rebellions.career.greetinghr.com/ko/o/240040",
+        "type": "HTTP redirect",
+        "status": 301
+      }
+    ],
+    "checked_on": "2026-10-26"
+  },
+  "remember": {
+    "url": "https://tally.so/r/wA8ZRk?channel=web",
+    "evidence": [
+      {
+        "from": "https://rememberapp.co.kr/",
+        "url": "https://career.rememberapp.co.kr/job/postings",
+        "type": "HTTP redirect",
+        "status": 302
+      },
+      {
+        "from": "https://career.rememberapp.co.kr/job/postings",
+        "url": "https://tally.so/r/wA8ZRk?channel=web",
+        "text": "공고를 올리거나 인재를 찾고 싶은 채용 담당자이신가요? 리멤버 채용 솔루션 안내",
+        "type": "visible career link"
+      }
+    ],
+    "checked_on": "2026-10-26"
+  },
+  "ringle": {
+    "url": "https://career.ringleplus.com/",
+    "evidence": [
+      {
+        "from": "https://www.ringleplus.com/",
+        "url": "https://www.ringleplus.com/ko/1on1",
+        "type": "HTTP redirect",
+        "status": 307
+      },
+      {
+        "from": "https://www.ringleplus.com/ko/1on1",
+        "url": "https://career.ringleplus.com/",
+        "text": "인재 채용",
+        "type": "visible career link"
+      },
+      {
+        "from": "https://career.ringleplus.com/",
+        "url": "https://career.ringleplus.com/b5e2969c-da2a-40fe-a8ef-983466a54b51",
+        "text": "Career at Ringle",
+        "type": "visible career link"
+      },
+      {
+        "from": "https://career.ringleplus.com/b5e2969c-da2a-40fe-a8ef-983466a54b51",
+        "url": "https://career.ringleplus.com/",
+        "type": "HTTP redirect",
+        "status": 301
+      }
+    ],
+    "checked_on": "2026-10-26"
+  },
+  "saltlux": {
+    "url": "https://www.saltlux.com/ko/index",
+    "evidence": [
+      {
+        "from": "https://www.saltlux.com/",
+        "url": "https://www.saltlux.com/ko/index",
+        "type": "HTTP redirect",
+        "status": 302
+      }
+    ],
+    "checked_on": "2026-10-26"
+  },
+  "samsung_electronics": {
+    "url": "https://www.samsung.com/sec/about-us/careers/kr/",
+    "evidence": [
+      {
+        "from": "https://www.samsung.com/sec/",
+        "url": "https://www.samsung.com/sec/about-us/careers/kr/",
+        "text": "채용",
+        "type": "visible career link"
+      },
+      {
+        "from": "https://www.samsung.com/sec/about-us/careers/kr/",
+        "url": "https://www.samsung.com/sec/about-us/careers/hiring-process-information/kr",
+        "text": "채용 프로세스 안내",
+        "type": "visible career link"
+      },
+      {
+        "from": "https://www.samsung.com/sec/about-us/careers/hiring-process-information/kr",
+        "url": "https://www.samsung.com/sec/about-us/careers/hiring-process-information/kr/",
+        "type": "HTTP redirect",
+        "status": 301
+      },
+      {
+        "from": "https://www.samsung.com/sec/about-us/careers/hiring-process-information/kr/",
+        "url": "https://www.samsung.com/sec/aboutsamsung/careers/careers-center/kr/",
+        "text": "채용 채용",
+        "type": "visible career link"
+      },
+      {
+        "from": "https://www.samsung.com/sec/aboutsamsung/careers/careers-center/kr/",
+        "url": "https://www.samsung.com/sec/about-us/careers/kr/",
+        "type": "HTTP redirect",
+        "status": 301
+      }
+    ],
+    "checked_on": "2026-10-26"
+  },
+  "scatterlab": {
+    "url": "https://www.scatterlab.co.kr/ko/recruiting",
+    "evidence": [
+      {
+        "from": "https://scatterlab.co.kr/",
+        "url": "https://www.scatterlab.co.kr/",
+        "type": "HTTP redirect",
+        "status": 307
+      },
+      {
+        "from": "https://www.scatterlab.co.kr/",
+        "url": "https://www.scatterlab.co.kr/ko",
+        "type": "HTTP redirect",
+        "status": 301
+      },
+      {
+        "from": "https://www.scatterlab.co.kr/ko",
+        "url": "https://www.scatterlab.co.kr/ko/intro",
+        "type": "HTTP redirect",
+        "status": 301
+      },
+      {
+        "from": "https://www.scatterlab.co.kr/ko/intro",
+        "url": "https://www.scatterlab.co.kr/ko/recruiting",
+        "text": "채용",
+        "type": "visible career link"
+      }
+    ],
+    "checked_on": "2026-10-26"
+  },
+  "smilegate": {
+    "url": "https://careers.smilegate.com/",
+    "evidence": [
+      {
+        "from": "https://careers.smilegate.com/apply/announce",
+        "url": "https://careers.smilegate.com/",
+        "text": "Smilegate Careers",
+        "type": "visible career link"
+      }
+    ],
+    "checked_on": "2026-10-26"
+  },
+  "supercent": {
+    "url": "https://supercent.career.greetinghr.com/ko/career",
+    "evidence": [
+      {
+        "from": "https://www.supercent.io/",
+        "url": "https://supercent.io/",
+        "type": "HTTP redirect",
+        "status": 301
+      },
+      {
+        "from": "https://supercent.io/",
+        "url": "https://supercent.career.greetinghr.com/ko/career",
+        "text": "Career",
+        "type": "visible career link"
+      }
+    ],
+    "checked_on": "2026-10-26"
+  },
+  "swit": {
+    "url": "https://www.swit.io:443/",
+    "evidence": [
+      {
+        "from": "https://swit.io/",
+        "url": "https://www.swit.io:443/",
+        "type": "HTTP redirect",
+        "status": 301
+      }
+    ],
+    "checked_on": "2026-10-26"
+  },
+  "upstage": {
+    "url": "https://www.upstage.ai/ko/careers",
+    "evidence": [
+      {
+        "from": "https://www.upstage.ai/",
+        "url": "https://www.upstage.ai/careers",
+        "text": "Careers",
+        "type": "visible career link"
+      },
+      {
+        "from": "https://www.upstage.ai/careers",
+        "url": "https://www.upstage.ai/ko/careers",
+        "text": "🇰🇷",
+        "type": "visible career link"
+      }
+    ],
+    "checked_on": "2026-10-26"
+  },
+  "vuno": {
+    "url": "https://vunohire.career.greetinghr.com/ko/home",
+    "evidence": [
+      {
+        "from": "https://www.vuno.co/",
+        "url": "https://www.vuno.co/career",
+        "text": "Career",
+        "type": "visible career link"
+      },
+      {
+        "from": "https://www.vuno.co/career",
+        "url": "https://vunohire.career.greetinghr.com/",
+        "text": "뷰노 채용 지원하러 가기",
+        "type": "visible career link"
+      },
+      {
+        "from": "https://vunohire.career.greetinghr.com/",
+        "url": "https://vunohire.career.greetinghr.com/ko",
+        "type": "HTTP redirect",
+        "status": 301
+      },
+      {
+        "from": "https://vunohire.career.greetinghr.com/ko",
+        "url": "https://vunohire.career.greetinghr.com/ko/home",
+        "type": "HTTP redirect",
+        "status": 301
+      }
+    ],
+    "checked_on": "2026-10-26"
+  },
+  "wrtn": {
+    "url": "https://career.wrtn.io/ko/career",
+    "evidence": [
+      {
+        "from": "https://wrtn.career.greetinghr.com/ko/career",
+        "url": "https://career.wrtn.io/career",
+        "type": "HTTP redirect",
+        "status": 301
+      },
+      {
+        "from": "https://career.wrtn.io/career",
+        "url": "https://career.wrtn.io/ko/career",
+        "type": "HTTP redirect",
+        "status": 301
+      },
+      {
+        "from": "https://career.wrtn.io/ko/career",
+        "url": "https://career.wrtn.io/ko",
+        "text": "뤼튼테크놀로지스 채용",
+        "type": "visible career link"
+      },
+      {
+        "from": "https://career.wrtn.io/ko",
+        "url": "https://career.wrtn.io/ko/career",
+        "type": "HTTP redirect",
+        "status": 301
+      }
+    ],
+    "checked_on": "2026-10-26"
+  },
+  "yanolja": {
+    "url": "https://yanolja.wd102.myworkdayjobs.com/ko-KR/External_Yanolja",
+    "evidence": [
+      {
+        "from": "https://careers.yanolja.co/ko/home",
+        "url": "https://yanolja.wd102.myworkdayjobs.com/ko-KR/External_Yanolja",
+        "text": "Career",
+        "type": "visible career link"
+      }
+    ],
+    "checked_on": "2026-10-26"
+  }
+}

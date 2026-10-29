@@ -1,0 +1,45 @@
+{
+  "note": "SYNTHETIC fixtures from v2.0; NEVER claim live site verification",
+  "boards": [
+    {
+      "family": "greeting",
+      "company": "김캐디",
+      "url": "https://kimcaddie.career.greetinghr.com/ko/position",
+      "list_file": "domestic_greeting_list.html",
+      "fixture_origin": "synthetic",
+      "details": [
+        {
+          "url": "https://kimcaddie.career.greetinghr.com/ko/o/206177",
+          "file": "domestic_greeting_detail.html",
+          "reference": {
+            "title": "백엔드 개발자 포지션 (신입~5년차)",
+            "organization": "김캐디",
+            "region": "서울특별시 서초구",
+            "employment_type": "정규직",
+            "deadline_on": "2026-12-31"
+          }
+        }
+      ]
+    },
+    {
+      "family": "ninehire",
+      "company": "페이히어",
+      "url": "https://payhere.ninehire.site/recruit",
+      "list_file": "domestic_ninehire_list.html",
+      "fixture_origin": "synthetic",
+      "details": [
+        {
+          "url": "https://payhere.ninehire.site/job_posting/3ETue9oP",
+          "file": "domestic_ninehire_detail.html",
+          "reference": {
+            "title": "React 웹 프론트엔드 개발자",
+            "organization": "페이히어",
+            "region": "부산 해운대구",
+            "employment_type": "정규직",
+            "deadline_on": null
+          }
+        }
+      ]
+    }
+  ]
+}

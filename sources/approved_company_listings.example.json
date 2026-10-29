@@ -1,0 +1,12 @@
+{
+  "listings": [
+    {
+      "company": "오늘의집 (버킷플레이스)",
+      "url": "https://www.bucketplace.com/careers/",
+      "selector": "a[href*='/careers/']",
+      "detail_path_prefix": "/careers/202",
+      "authorized": false,
+      "note": "Example only. Review current permission/terms, confirm selectors, then set authorized=true and ALLOW_HTML_APPROVED_COMPANY_LISTINGS=1."
+    }
+  ]
+}

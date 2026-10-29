@@ -1,0 +1,7 @@
+{
+  "_readme": "Template. These samples are disabled and may be outdated. Only set authorized=true after verifying collection/reuse permission and relevant site robots policy. Never use private Ninehire API.",
+  "boards": [
+    {"family":"greeting", "company":"슈퍼센트", "url":"https://supercent.career.greetinghr.com/ko/position", "link_selector":"a[href]", "authorized":false},
+    {"family":"ninehire", "company":"페이히어", "url":"https://payhere.ninehire.site/recruit", "link_selector":"a[href]", "authorized":false}
+  ]
+}

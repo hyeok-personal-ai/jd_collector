@@ -1,0 +1,6 @@
+{
+  "note": "Illustrative only; replace placeholder HTTPS URLs with permitted public company-owned pages. Only set authorized=true after reviewing terms/permission.",
+  "pages": [
+    {"url": "https://your-company-careers.example.com/jobs/123", "company": "Example Company", "authorized": true}
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "notice": "Reviewed website examples and URL patterns, NOT automatic collection authorization or live API validation. Do not activate without checking terms/robots.",
+  "boards": [
+    {"company":"슈퍼센트", "family":"greeting", "url":"https://supercent.career.greetinghr.com/ko/position", "evidence":"https://supercent.career.greetinghr.com/ko/position", "status":"web_page_listed", "authorized":false},
+    {"company":"그렙", "family":"greeting", "url":"https://grepp-recruit.career.greetinghr.com/ko/guide", "evidence":"https://grepp-recruit.career.greetinghr.com/ko/guide", "status":"web_page_listed", "authorized":false},
+    {"company":"ZEP", "family":"greeting", "url":"https://zep.career.greetinghr.com/ko/guide", "evidence":"https://zep.career.greetinghr.com/ko/guide", "status":"web_page_listed", "authorized":false},
+    {"company":"카카오모빌리티", "family":"greeting", "url":"https://kakaomobility.career.greetinghr.com/ko/new", "evidence":"https://kakaomobility.career.greetinghr.com/ko/new", "status":"company_page_only_not_verified_job_list", "authorized":false},
+    {"company":"페이히어", "family":"ninehire", "url":"https://payhere.ninehire.site/recruit", "evidence":"https://payhere.ninehire.site/recruit", "status":"page_listed_but_no_usable_jobs_in_web_view", "authorized":false},
+    {"company":"나인하이어 데모", "family":"ninehire", "url":"https://ninehiredemokim.ninehire.site/job_posting", "evidence":"https://ninehiredemokim.ninehire.site/job_posting", "status":"demo_page_no_jobs_in_web_view", "authorized":false}
+  ]
+}

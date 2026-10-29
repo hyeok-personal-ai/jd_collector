@@ -1,0 +1,349 @@
+{
+  "version": 2,
+  "note": "Public ATS board candidates with evidence URLs. Web page found does NOT imply live feed success or permission to republish. Test with verify_boards --live; source metadata/link preferred.",
+  "boards": [
+    {
+      "provider": "greenhouse",
+      "id": "get-delight",
+      "company": "delight.ai (Sendbird)",
+      "evidence": "https://job-boards.greenhouse.io/get-delight",
+      "confidence": "candidate",
+      "focus": "kr_it"
+    },
+    {
+      "provider": "greenhouse",
+      "id": "seoulrobotics",
+      "company": "Seoul Robotics",
+      "evidence": "https://job-boards.greenhouse.io/seoulrobotics",
+      "confidence": "candidate",
+      "focus": "kr_it"
+    },
+    {
+      "provider": "greenhouse",
+      "id": "marqvision",
+      "company": "MarqVision",
+      "evidence": "https://job-boards.greenhouse.io/marqvision",
+      "confidence": "candidate",
+      "focus": "kr_it"
+    },
+    {
+      "provider": "greenhouse",
+      "id": "moloco",
+      "company": "Moloco",
+      "evidence": "https://job-boards.greenhouse.io/moloco",
+      "confidence": "candidate",
+      "focus": "kr_it"
+    },
+    {
+      "provider": "lever",
+      "id": "zoyi",
+      "company": "Channel Corp. (채널코퍼레이션)",
+      "evidence": "https://jobs.lever.co/zoyi/fbe11a2f-63e3-4cae-b2e5-68f94886cb06/apply",
+      "confidence": "public_page_found",
+      "focus": "kr_it"
+    },
+    {
+      "provider": "lever",
+      "id": "palantir",
+      "company": "Palantir Technologies",
+      "evidence": "https://jobs.lever.co/palantir/341d5cae-a473-4813-9a6c-0f67fcc1b253",
+      "confidence": "public_page_found",
+      "focus": "kr_it"
+    },
+    {
+      "provider": "lever",
+      "id": "clovirtualfashion",
+      "company": "CLO Virtual Fashion",
+      "evidence": "https://jobs.lever.co/clovirtualfashion",
+      "confidence": "candidate",
+      "focus": "kr_it"
+    },
+    {
+      "provider": "lever",
+      "id": "matchgroup",
+      "company": "Match Group",
+      "evidence": "https://jobs.lever.co/matchgroup/2196948b-9338-4943-acba-cb529335ed16",
+      "confidence": "public_page_found",
+      "focus": "kr_it"
+    },
+    {
+      "provider": "ashby",
+      "id": "furiosa-ai",
+      "company": "FuriosaAI",
+      "evidence": "https://jobs.ashbyhq.com/furiosa-ai/11eafd2e-d89b-4c61-bb64-b38cf0748536",
+      "confidence": "public_page_found",
+      "focus": "kr_it"
+    },
+    {
+      "provider": "ashby",
+      "id": "friendliai",
+      "company": "FriendliAI",
+      "evidence": "https://jobs.ashbyhq.com/friendliai/4abd3a9b-b655-4095-a151-b6da2922f2f5",
+      "confidence": "public_page_found",
+      "focus": "kr_it"
+    },
+    {
+      "provider": "ashby",
+      "id": "fieldguide",
+      "company": "Fieldguide",
+      "evidence": "https://jobs.ashbyhq.com/fieldguide/6fb23db9-ee3d-49b5-97bb-3f4a5e4a6768/",
+      "confidence": "public_page_found",
+      "focus": "global_it"
+    },
+    {
+      "provider": "ashby",
+      "id": "applied",
+      "company": "Applied Intuition",
+      "evidence": "https://jobs.ashbyhq.com/applied/d71792af-63bd-49d9-a52a-d3500847b332",
+      "confidence": "public_page_found",
+      "focus": "kr_it"
+    },
+    {
+      "provider": "ashby",
+      "id": "airwallex",
+      "company": "Airwallex",
+      "evidence": "https://jobs.ashbyhq.com/airwallex/1b86dee1-733b-4506-bed8-2d314603d0e1",
+      "confidence": "public_page_found",
+      "focus": "global_it"
+    },
+    {
+      "provider": "ashby",
+      "id": "bjakcareer",
+      "company": "Bjak",
+      "evidence": "https://jobs.ashbyhq.com/bjakcareer/e7fd6660-8e11-4d3d-9fe7-827aadabf965",
+      "confidence": "public_page_found",
+      "focus": "kr_it"
+    },
+    {
+      "provider": "smartrecruiters",
+      "id": "SAPITBusinessSysteme",
+      "company": "SAP IT",
+      "evidence": "https://jobs.smartrecruiters.com/SAPITBusinessSysteme/744000152849389",
+      "confidence": "public_page_found",
+      "focus": "global_it"
+    },
+    {
+      "provider": "smartrecruiters",
+      "id": "renesaselectronics",
+      "company": "Renesas Electronics",
+      "evidence": "https://jobs.smartrecruiters.com/renesaselectronics/744000144307966",
+      "confidence": "public_page_found",
+      "focus": "global_it"
+    },
+    {
+      "provider": "smartrecruiters",
+      "id": "AudemarsPiguet",
+      "company": "Audemars Piguet",
+      "evidence": "https://jobs.smartrecruiters.com/AudemarsPiguet/744000145228049-it-coordinator",
+      "confidence": "public_page_found",
+      "focus": "global_it"
+    },
+    {
+      "provider": "greenhouse",
+      "id": "krafton",
+      "company": "크래프톤 (KRAFTON)",
+      "evidence": "https://job-boards.greenhouse.io/krafton",
+      "focus": "kr_it",
+      "confidence": "public_page_found",
+      "enabled": true
+    },
+    {
+      "provider": "greenhouse",
+      "id": "pubgcorporation",
+      "company": "PUBG Studios",
+      "evidence": "https://job-boards.greenhouse.io/pubgcorporation",
+      "focus": "kr_it",
+      "confidence": "public_page_found",
+      "enabled": true
+    },
+    {
+      "provider": "greenhouse",
+      "id": "dunamu",
+      "company": "두나무 (Dunamu)",
+      "evidence": "https://job-boards.greenhouse.io/dunamu/jobs/5536857004",
+      "focus": "kr_it",
+      "confidence": "public_page_found",
+      "enabled": true
+    },
+    {
+      "provider": "greenhouse",
+      "id": "lgairesearch",
+      "company": "LG AI연구원",
+      "evidence": "https://job-boards.greenhouse.io/lgairesearch",
+      "focus": "kr_it",
+      "confidence": "public_page_found",
+      "enabled": true
+    },
+    {
+      "provider": "greenhouse",
+      "id": "furiosaai",
+      "company": "퓨리오사AI (FuriosaAI)",
+      "evidence": "https://job-boards.greenhouse.io/furiosaai",
+      "focus": "kr_it",
+      "confidence": "public_page_found",
+      "enabled": true
+    },
+    {
+      "provider": "greenhouse",
+      "id": "sonatus",
+      "company": "Sonatus",
+      "evidence": "https://job-boards.greenhouse.io/sonatus",
+      "focus": "kr_it",
+      "confidence": "public_page_found",
+      "enabled": true
+    },
+    {
+      "provider": "greenhouse",
+      "id": "ujet",
+      "company": "UJET",
+      "evidence": "https://job-boards.greenhouse.io/ujet",
+      "focus": "kr_it",
+      "confidence": "public_page_found",
+      "enabled": true
+    },
+    {
+      "provider": "greenhouse",
+      "id": "appier",
+      "company": "Appier",
+      "evidence": "https://job-boards.greenhouse.io/appier/jobs/6753727",
+      "focus": "kr_it",
+      "confidence": "public_page_found",
+      "enabled": true
+    },
+    {
+      "provider": "greenhouse",
+      "id": "artefact",
+      "company": "Artefact",
+      "evidence": "https://job-boards.greenhouse.io/artefact",
+      "focus": "global_it",
+      "confidence": "public_page_found",
+      "enabled": true
+    },
+    {
+      "provider": "greenhouse",
+      "id": "dataiku",
+      "company": "Dataiku",
+      "evidence": "https://job-boards.greenhouse.io/dataiku",
+      "focus": "global_it",
+      "confidence": "public_page_found",
+      "enabled": true
+    },
+    {
+      "provider": "greenhouse",
+      "id": "casetify",
+      "company": "CASETiFY",
+      "evidence": "https://job-boards.greenhouse.io/casetify/jobs/6120150004",
+      "focus": "kr_other",
+      "confidence": "public_page_found",
+      "enabled": true
+    },
+    {
+      "provider": "greenhouse",
+      "id": "rzr",
+      "company": "RZR (formerly Aarki)",
+      "evidence": "https://job-boards.greenhouse.io/rzr",
+      "focus": "global_it",
+      "confidence": "public_page_found",
+      "enabled": true
+    },
+    {
+      "provider": "greenhouse",
+      "id": "step",
+      "company": "Step (Beast Industries)",
+      "evidence": "https://job-boards.greenhouse.io/step",
+      "focus": "global_it",
+      "confidence": "public_page_found",
+      "enabled": true
+    },
+    {
+      "provider": "greenhouse",
+      "id": "voxel51",
+      "company": "Voxel51",
+      "evidence": "https://job-boards.greenhouse.io/voxel51",
+      "focus": "global_it",
+      "confidence": "public_page_found",
+      "enabled": true
+    },
+    {
+      "provider": "greenhouse",
+      "id": "fivetran",
+      "company": "Fivetran",
+      "evidence": "https://job-boards.greenhouse.io/fivetran",
+      "focus": "global_it",
+      "confidence": "public_page_found",
+      "enabled": true
+    },
+    {
+      "provider": "greenhouse",
+      "id": "nintendo",
+      "company": "Nintendo",
+      "evidence": "https://job-boards.greenhouse.io/nintendo",
+      "focus": "global_it",
+      "confidence": "public_page_found",
+      "enabled": true
+    },
+    {
+      "provider": "greenhouse",
+      "id": "matic",
+      "company": "Matic",
+      "evidence": "https://job-boards.greenhouse.io/matic",
+      "focus": "global_it",
+      "confidence": "public_page_found",
+      "enabled": true
+    },
+    {
+      "provider": "greenhouse",
+      "id": "netradyne",
+      "company": "Netradyne",
+      "evidence": "https://job-boards.greenhouse.io/netradyne",
+      "focus": "global_it",
+      "confidence": "public_page_found",
+      "enabled": true
+    },
+    {
+      "provider": "ashby",
+      "id": "twelve-labs",
+      "company": "Twelve Labs",
+      "evidence": "https://jobs.ashbyhq.com/twelve-labs/ea524a52-ff38-42e1-8860-0db25bebdd48/",
+      "focus": "kr_it",
+      "confidence": "public_page_found",
+      "enabled": true
+    },
+    {
+      "provider": "ashby",
+      "id": "vessl-ai",
+      "company": "VESSL AI",
+      "evidence": "https://jobs.ashbyhq.com/vessl-ai/8673f35a-c56f-4250-92be-d2fd1eb6e48f",
+      "focus": "kr_it",
+      "confidence": "public_page_found",
+      "enabled": true
+    },
+    {
+      "provider": "ashby",
+      "id": "Cheiron",
+      "company": "Cheiron (케이론)",
+      "evidence": "https://jobs.ashbyhq.com/Cheiron/5465945c-953b-4f0d-8d23-eaa06adf377a",
+      "focus": "kr_it",
+      "confidence": "public_page_found",
+      "enabled": true
+    },
+    {
+      "provider": "ashby",
+      "id": "hopae",
+      "company": "Hopae",
+      "evidence": "https://jobs.ashbyhq.com/hopae/68939501-9f00-4677-be82-83bc9360c5ef",
+      "focus": "kr_it",
+      "confidence": "public_page_found",
+      "enabled": true
+    },
+    {
+      "provider": "lever",
+      "id": "emma-sleep",
+      "company": "Emma – The Sleep Company",
+      "evidence": "https://jobs.lever.co/emma-sleep/d531dac2-a79d-45ab-aac4-2ac9c6d08b2f",
+      "focus": "kr_other",
+      "confidence": "public_page_found",
+      "enabled": true
+    }
+  ]
+}

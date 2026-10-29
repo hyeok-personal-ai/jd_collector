@@ -1,0 +1,5 @@
+# 예시: 추가 등록하고 싶은 공개 ATS URL을 한 줄에 하나씩 작성
+# 아래 세 개는 기본 카탈로그에 이미 등록되어 있어 가져오면 건너뛰어집니다.
+https://job-boards.greenhouse.io/krafton
+https://jobs.ashbyhq.com/vessl-ai/8673f35a-c56f-4250-92be-d2fd1eb6e48f
+https://jobs.lever.co/palantir

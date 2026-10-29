@@ -1,0 +1,12 @@
+{"input":{"source_id":"sample","external_id":"1","title":"신입 백엔드 개발자 채용","original_url":"https://example.org/jobs/1","region":"서울특별시","body_text":"신입 백엔드 개발자 채용합니다."},"expected":{"it_match":"yes","career":"entry","region":"서울"}}
+{"input":{"source_id":"sample","external_id":"2","title":"Senior Backend Engineer","original_url":"https://example.org/jobs/2","body_text":"High availability systems."},"expected":{"it_match":"yes","career":"experienced"}}
+{"input":{"source_id":"sample","external_id":"3","title":"AI Engineer Intern","original_url":"https://example.org/jobs/3"},"expected":{"it_match":"yes","career":"intern"}}
+{"input":{"source_id":"sample","external_id":"4","title":"마케팅 매니저 채용","original_url":"https://example.org/jobs/4"},"expected":{"it_match":"no","career":"unknown"}}
+{"input":{"source_id":"sample","external_id":"5","title":"데이터 엔지니어 경력 2년 이상","original_url":"https://example.org/jobs/5"},"expected":{"it_match":"yes","career":"early","min_years":2}}
+{"input":{"source_id":"sample","external_id":"6","title":"백엔드 개발자 경력 5년 이상","original_url":"https://example.org/jobs/6"},"expected":{"it_match":"yes","career":"experienced","min_years":5}}
+{"input":{"source_id":"sample","external_id":"7","title":"인사팀 인턴","original_url":"https://example.org/jobs/7"},"expected":{"it_match":"no","career":"intern"}}
+{"input":{"source_id":"sample","external_id":"8","title":"Full Stack Developer - 0~3 years","original_url":"https://example.org/jobs/8"},"expected":{"it_match":"yes","career":"early","min_years":0,"max_years":3}}
+{"input":{"source_id":"sample","external_id":"9","title":"Software Engineer, New Grad","original_url":"https://example.org/jobs/9"},"expected":{"it_match":"yes","career":"entry"}}
+{"input":{"source_id":"sample","external_id":"10","title":"디자이너 채용","original_url":"https://example.org/jobs/10","body_text":"백엔드 개발자와 협업합니다."},"expected":{"it_match":"no","career":"unknown"}}
+{"input":{"source_id":"sample","external_id":"11","title":"DevOps Engineer","original_url":"https://example.org/jobs/11"},"expected":{"it_match":"yes","career":"unknown"}}
+{"input":{"source_id":"sample","external_id":"12","title":"웹 개발자 경력 1~3년","original_url":"https://example.org/jobs/12"},"expected":{"it_match":"yes","career":"early","min_years":1,"max_years":3}}
