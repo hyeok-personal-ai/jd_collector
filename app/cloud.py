@@ -297,13 +297,13 @@ async def collect_cloud(repo, budget=600):
     from .crawlers.zighang_public import COMPANY_SOURCE
     from .crawlers.zighang_recent import pending_recent, recent_summary
     from .source_diagnostics import response_evidence, failure_evidence
-    from .fetcher import PoliteFetcher
+    from .fetcher import PoliteFetcher, browser_challenge
     evidence = []
     def diagnostic_fetcher(hosts):
         fetcher = PoliteFetcher(hosts)
         async def observe(response):
-            if response.status_code >= 400:
-                await response.aread()
+            await response.aread()
+            if response.status_code >= 400 or browser_challenge(response):
                 evidence.append(response_evidence(response))
                 del evidence[:-3]
         fetcher.client.event_hooks['response'] = [observe]

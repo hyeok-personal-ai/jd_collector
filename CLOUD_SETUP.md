@@ -35,3 +35,10 @@ GitHub 예약은 지연되거나 실행 한도에 영향을 받을 수 있습니
 ## Recent public discovery
 
 Development mode also samples the latest three official recruitment sitemaps within seven days. It inspects ten public detail pages per batch, retains development candidates and related public company links, and persists the inspection cursor in private state. Non-development detail bodies are not retained by this discovery stage. This expands beyond company first lists; neither the URL backlog nor a completed batch proves full active-development coverage. Local automatic collection continues batches, while Actions resumes within its configured time budget.
+
+
+## Source access diagnostics
+
+Run `python -m app.source_diagnostics` to compare robots and the first public WordPress list using the normal collector user agent and policy checks. It prints response status, content hashes, safe headers, pagination and runtime versions; never response bodies, cookies, tokens or arbitrary query values. Cloud collection records the failing response metadata in private state. A successful probe cannot prove every later page is accessible.
+
+WordPress pages are saved incrementally. Completed pages survive a later failure or time limit, restored pages are read in numerical order, and absence checks run only after the current list has been fully reconciled. Access denials still stop collection; no challenge-solving or alternate identities are used.

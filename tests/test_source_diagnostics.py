@@ -47,11 +47,12 @@ def test_incomplete_scan_never_treats_unvisited_post_as_removed(tmp_path):
 
 
 def test_response_evidence_omits_body_credentials_and_query():
-    response=httpx.Response(403,request=httpx.Request('GET','https://inthiswork.com/robots.txt?secret=private'),
+    response=httpx.Response(403,request=httpx.Request('GET','https://inthiswork.com/robots.txt?secret=private&page=13&per_page=100'),
         headers={'set-cookie':'private','server':'nginx'},text='window.HASHCASH_CONFIG={}; /__challenge/ private')
     result=response_evidence(response)
     assert result['browser_challenge']
     assert 'private' not in json.dumps(result)
     assert result['path']=='/robots.txt'
+    assert result['pagination']=={'page':13,'per_page':100}
     assert failure_evidence('robots.txt HTTP 403: browser security challenge')=={
         'http_status':403,'stage':'robots','kind':'browser_challenge'}

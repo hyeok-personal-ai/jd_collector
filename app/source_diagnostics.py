@@ -5,7 +5,7 @@ import json
 import os
 import platform
 import ssl
-from urllib.parse import urlsplit
+from urllib.parse import urlsplit, parse_qs
 
 import httpx
 from .config import USER_AGENT
@@ -15,7 +15,9 @@ WP_LIST = 'https://inthiswork.com/wp-json/wp/v2/posts?categories=191700167,19170
 
 
 def response_evidence(response):
-    return {'path':urlsplit(str(response.url)).path, 'status':response.status_code,
+    query=parse_qs(urlsplit(str(response.url)).query)
+    pagination={k:int(query[k][0]) for k in ('page','per_page') if k in query and query[k][0].isascii() and query[k][0].isdecimal() and len(query[k][0])<7}
+    return {'path':urlsplit(str(response.url)).path, 'status':response.status_code, 'pagination':pagination,
             'headers':{k:response.headers[k] for k in ('server','content-type','x-cache','x-cache-status','retry-after') if k in response.headers},
             'browser_challenge':browser_challenge(response),
             'body_bytes':len(response.content), 'body_sha256':hashlib.sha256(response.content).hexdigest()}
