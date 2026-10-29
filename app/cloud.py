@@ -251,7 +251,13 @@ async def sync_once():
 
 async def sync_loop():
     while True:
-        await sync_once()
+        try:
+            await sync_once()
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            # A broken local config must not permanently stop future sync attempts.
+            logging.getLogger(__name__).warning('Private cloud sync configuration unavailable')
         await asyncio.sleep(300)
 
 
@@ -276,6 +282,8 @@ async def collect_cloud(repo, budget=600):
                                     'created': run.created_count, 'updated': run.updated_count,
                                     'checked_at': utcnow().isoformat()}
                 if run.status not in ('completed', 'limited'):
+                    from .service import failure_status
+                    statuses[source]['status'] = failure_status(run.error_summary or '')
                     statuses[source]['reason'] = 'source_access_or_parse_failure'
                     break
                 if source != 'zighang' or not (store.due_discovery_pages(COMPANY_SOURCE, 1) or store.due('zighang', 1, focus='development')):

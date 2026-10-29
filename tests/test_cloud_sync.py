@@ -161,3 +161,19 @@ def test_unconfigured_sync_performs_no_network(monkeypatch, tmp_path):
     monkeypatch.setattr(cloud, 'data_dir', lambda: tmp_path)
     monkeypatch.setattr(cloud, 'gh', lambda *a, **kw: pytest.fail('Unexpected network'))
     assert asyncio.run(cloud.sync_once()) == {'configured': False}
+
+
+def test_auto_sync_retries_after_configuration_failure(monkeypatch):
+    import asyncio
+    calls = []
+    async def broken():
+        calls.append('attempt')
+        raise ValueError('Invalid local configuration')
+    async def pause(_seconds):
+        calls.append('retry scheduled')
+        raise asyncio.CancelledError
+    monkeypatch.setattr(cloud, 'sync_once', broken)
+    monkeypatch.setattr(cloud.asyncio, 'sleep', pause)
+    with pytest.raises(asyncio.CancelledError):
+        asyncio.run(cloud.sync_loop())
+    assert calls == ['attempt', 'retry scheduled']
