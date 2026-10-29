@@ -6,7 +6,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 ROOT_FILES = {'.gitignore', '.env.example', 'README.md', 'PUBLICATION.md',
-              'CHANGELOG.md', 'pyproject.toml', 'start.ps1'}
+              'CHANGELOG.md', 'CLOUD_SETUP.md', 'pyproject.toml', 'start.ps1'}
 FOLDERS = {'app': {'.py', '.json', '.html'}, 'tests': {'.py'},
            'fixtures': {'.json', '.jsonl', '.html'}, 'sources': {'.json', '.txt'}}
 SCRIPTS = {'scripts/check_publication.py', 'scripts/seed_zighang_company_discovery.py'}

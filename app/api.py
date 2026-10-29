@@ -31,15 +31,21 @@ from .control import ControlStore
 async def lifespan(_app: FastAPI):
     init_db()  # For MVP; replace with Alembic migrations later.
     worker = None
+    cloud_worker = None
     if os.getenv('RADAR_WORKER') == '1':
         from .service import serve_queue
         worker = asyncio.create_task(serve_queue())
+        from .cloud import sync_loop
+        cloud_worker = asyncio.create_task(sync_loop())
     try:
         yield
     finally:
         if worker:
             worker.cancel()
             await asyncio.gather(worker, return_exceptions=True)
+        if cloud_worker:
+            cloud_worker.cancel()
+            await asyncio.gather(cloud_worker, return_exceptions=True)
 
 
 app = FastAPI(title="Recruit Radar", version="2.4.0", lifespan=lifespan)
@@ -334,6 +340,18 @@ def zighang_focus(body: DevelopmentFocusRequest):
 @app.get('/api/control')
 def control_status():
     return ControlStore().snapshot()
+
+
+@app.get('/api/cloud-sync')
+def cloud_sync_status():
+    from .cloud import sync_status
+    return sync_status()
+
+
+@app.post('/api/cloud-sync')
+async def cloud_sync_now():
+    from .cloud import sync_once
+    return await sync_once()
 
 
 @app.get('/api/targets')

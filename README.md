@@ -44,3 +44,7 @@ GitHub Actions는 Linux/Windows, Python 3.11/3.12에서 공개 파일 점검·�
 수집 결과는 원문과 대조하세요. 전체 공고 확보와 실시간 정확성을 보장하지 않습니다.
 
 공개 범위와 제외 기준은 [PUBLICATION.md](PUBLICATION.md), 구현 기록은 [CHANGELOG.md](CHANGELOG.md)를 확인하세요.
+
+## PC가 꺼져 있을 때 수집
+
+별도의 **비공개 저장소**에서 예약 수집하고, 로컬 앱이 실행될 때 비공개 스냅샷을 가져오는 기능을 제공합니다. 공개 저장소의 CI에서는 수집하지 않습니다. [CLOUD_SETUP.md](CLOUD_SETUP.md)를 참고하세요.
