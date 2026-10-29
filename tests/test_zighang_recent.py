@@ -68,3 +68,21 @@ def test_private_snapshot_preserves_recent_scan_cursor(tmp_path,monkeypatch):
     assert restored.meta(RECENT_SOURCE,'last_scan')==123
     assert pending_recent(restored)[0]['id']=='candidate'
     engine.dispose()
+
+
+def test_current_wordpress_coverage_does_not_count_historical_failure(tmp_path):
+    store=AggregateStore(tmp_path/'inventory.sqlite')
+    store.pages('inthiswork',['page'])
+    store.save_page('inthiswork','page',[{'id':'old','url':'old'}])
+    store.mark('inthiswork','old','failed','private historical post')
+    store.meta('inthiswork','scan_started',time.time())
+    store.save_page('inthiswork','page',[{'id':'new','url':'new'}])
+    store.mark('inthiswork','new','done')
+    store.meta('inthiswork','expected',1)
+    store.meta('inthiswork','scanned_unique_count',1)
+    result=store.summary('inthiswork')
+    assert result['current_list_complete']
+    assert result['current_inventory']=={'done':1}
+    assert not result['complete']  # Historical error remains visible, not deleted.
+    store.mark('inthiswork','new','failed')
+    assert not store.summary('inthiswork')['current_list_complete']

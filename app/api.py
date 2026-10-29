@@ -90,7 +90,7 @@ def aggregate_status(session: SessionDep):
         item['saved']['total'] = sum(item['saved'].values())
         # Sitemap URLs include historical postings; their count cannot be an open total.
         item['coverage_fresh'] = bool(item['last_scan'] and now.timestamp()-item['last_scan']<=21600)
-        item['remaining_open'] = 0 if source == 'inthiswork' and item['complete'] and item['coverage_fresh'] else None
+        item['remaining_open'] = 0 if source == 'inthiswork' and (item['complete'] or item['current_list_complete']) and item['coverage_fresh'] else None
         latest=session.scalar(select(CrawlRun).where(CrawlRun.source_id==source).order_by(CrawlRun.id.desc()))
         checked=(latest.finished_at or latest.started_at) if latest else None
         item['latest_run']={'status':latest.status,'checked_at':checked.replace(tzinfo=timezone.utc).isoformat(),

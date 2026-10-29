@@ -182,9 +182,15 @@ class AggregateStore:
             review={r[0]:r[1] for r in db.execute("SELECT recheck_mode,count(*) FROM aggregate_refs WHERE source=? AND state='done' GROUP BY recheck_mode",(source,))}
         expected=self.meta(source,'expected')
         scanned=self.meta(source,'scanned_unique_count')
+        started=self.meta(source,'scan_started')
+        current={}
+        if source=='inthiswork' and started:
+            with self.db() as db:
+                current={r[0]:r[1] for r in db.execute('SELECT state,count(*) FROM aggregate_refs WHERE source=? AND seen>=? GROUP BY state',(source,started))}
         count_matches=expected is None or (scanned if scanned is not None else sum(refs.values()))==expected
         return {'source':source,'inventory':refs,'pages':pages,'expected':expected,'count_matches':count_matches,
-                'review_policy':review,
+                'review_policy':review,'current_inventory':current,
+                'current_list_complete':bool(current and count_matches and sum(current.values())==expected and not pages.get('pending') and not any(current.get(state) for state in ('pending','failed','unavailable'))),
                 'scope':self.meta(source,'scope'),'last_scan':self.meta(source,'last_scan'),
                 'complete':bool(count_matches and pages.get('done') and not pages.get('pending') and not refs.get('pending') and not refs.get('failed'))}
 
