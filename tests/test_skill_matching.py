@@ -103,3 +103,29 @@ def test_requirement_sections_and_evidence():
     result = requirement_mentions(SimpleNamespace(title='',body_text='Python 개발\nRedis 경험 우대'), ['Python','Redis'])
     assert result['required'] == []
     assert result['mentioned'] == ['Python'] and result['preferred'] == ['Redis']
+
+
+def test_analysis_respects_search_filters_and_has_evidence(client):
+    response=client.get('/api/job-analysis',params={'skills':'Java','open_only':True,'role':'backend_infra'})
+    assert response.status_code==200
+    data=response.json()
+    assert data['total']==data['analyzed']==2
+    java=next(r for r in data['technologies'] if r['skill']=='Java')
+    assert java['posting_count']==2 and java['selected']
+    assert java['mentioned']==2 and java['required']==0
+    assert java['examples'][0]['url'].startswith('https://example.org/')
+    assert client.get('/api/job-analysis',params={'skills':'Kafka'}).json()['analyzed']==0
+    assert client.get('/api/job-analysis',params={'skills':','.join(['Java']*31)}).status_code==422
+    catalog=client.get('/api/skill-catalog').json()
+    assert any(r['name']=='NestJS' and 'nest.js' in r['aliases'] for r in catalog)
+
+
+def test_analysis_counts_postings_not_occurrences_and_labels_sampling():
+    from types import SimpleNamespace
+    from app.job_analysis import summarize_jobs
+    job=SimpleNamespace(title='서버 개발자',body_text='자격요건\nJava Java Java\n우대사항\nJava Redis',original_url='https://example.org/job')
+    data=summarize_jobs([job],['Java'],1000)
+    java=next(r for r in data['technologies'] if r['skill']=='Java')
+    assert java['posting_count']==java['required']==java['preferred']==1
+    assert data['sampled'] and data['analyzed']==1 and data['total']==1000
+    assert data['resume_focus']==['Java']

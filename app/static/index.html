@@ -65,8 +65,13 @@
     <form id="search" class="panel" aria-label="공고 검색">
     <div style="grid-column:1/-1;background:#f0f7f5;padding:16px;border-radius:12px">
       <h2 style="margin:0 0 10px;font-size:18px">내 기술로 공고 찾기</h2>
-      <label for="skillInput">보유 기술 <span class="small-note">쉼표로 구분 · 최대 30개</span></label>
-      <input id="skillInput" name="skills" aria-label="보유 기술" maxlength="1200" placeholder="Python, Java, Spring, SQL" style="margin:8px 0" />
+      <input type="hidden" id="skillInput" name="skills" />
+      <p class="small-note">기술을 눌러 선택하거나 해제하세요. 최대 30개 · 선택 후 저장·적용</p>
+      <input type="search" id="skillSearch" aria-label="기술 목록 검색" placeholder="기술 찾기: Java, 클라우드, 도커…" />
+      <p id="skillSelectionCount" role="status"></p>
+      <div id="selectedSkills" class="action-row" aria-label="선택한 기술"></div>
+      <details><summary>기술 목록 펼치기</summary><div id="skillChoices" class="action-row" aria-label="선택 가능한 기술"></div></details>
+      <details><summary>목록에 없는 기술 추가</summary><div class="action-row"><input id="customSkill" aria-label="추가할 기술" maxlength="40" placeholder="기술 이름 한 개" /><button type="button" id="addCustomSkill">추가</button></div></details>
       <div class="action-row">
         <select name="skill_mode" aria-label="기술 일치 조건"><option value="any">하나 이상 언급</option><option value="all">입력 기술 모두 언급</option></select>
         <select name="role" aria-label="희망 직무"><option value="">전체 직무 제목</option><option value="backend_infra">백엔드·서버/인프라 관련 제목</option></select>
@@ -96,6 +101,12 @@
     <label class="toggle"><input type="checkbox" id="openOnly" checked />마감 확인된 공고 제외</label>
     <label class="toggle"><input type="checkbox" id="bookmarkedOnly" />저장한 공고만</label><a id="exportFiltered" href="/api/export.csv?it_only=true&amp;open_only=true" class="button-link">검색 결과 CSV</a><div class="summary" id="summary">공고 불러오는 중…</div>
   </div>
+  <section class="verification-panel" aria-label="공고 분석과 지원 준비">
+    <h2>공고 분석 · 이력서와 포트폴리오 준비</h2>
+    <p class="small-note">현재 검색 조건의 공고에서 기술 요구를 집계합니다. 기술 필터를 해제하면 내 기술이 언급되지 않은 공고도 분석할 수 있습니다.</p>
+    <button type="button" id="analyzeJobs">현재 조건으로 공고 분석</button>
+    <p id="analysisStatus" role="status"></p><div id="analysisResult"></div>
+  </section>
   <p id="error" role="alert"></p>
   <section class="jobs" id="jobs" aria-label="공고 목록"></section>
   <nav class="paging" aria-label="페이지 탐색">
@@ -156,13 +167,24 @@ function render(items){
     card.append(foot);list.append(card);
   }
 }
-function applySkillProfile(profile){form.elements.skills.value=profile.skills.join(', ');form.elements.role.value=profile.role||'';form.elements.skill_mode.value='any';form.elements.sort.value='match';form.elements.it_only.value='true';}
-async function initSkills(){try{const r=await fetch('/api/skill-profile');if(!r.ok)return;const profile=await r.json();let saved={};try{saved=JSON.parse(localStorage.getItem('radar-search-v1')||'{}')}catch{}if(!Object.hasOwn(saved.fields||{},'skills')&&profile.skills.length)applySkillProfile(profile);document.querySelector('#skillProfileStatus').textContent=profile.skills.length?'이 PC에 저장된 기술 '+profile.skills.length+'개':'';}catch{}}
+let skillCatalog=[];
+function chosenSkills(){return form.elements.skills.value.split(',').map(v=>v.trim()).filter(Boolean)}
+function toggleSkill(name){const selected=chosenSkills();const i=selected.indexOf(name);if(i>=0)selected.splice(i,1);else{if(selected.length>=30){message('기술은 최대 30개입니다.');return}selected.push(name)}form.elements.skills.value=selected.join(', ');renderSkillPicker();invalidateAnalysis();document.querySelector('#skillProfileStatus').textContent='선택을 변경했습니다. 저장·적용을 누르세요.';}
+function renderSkillPicker(){const selected=chosenSkills(),query=document.querySelector('#skillSearch').value.trim().toLowerCase();const chips=document.querySelector('#selectedSkills'),choices=document.querySelector('#skillChoices');chips.replaceChildren();choices.replaceChildren();document.querySelector('#skillSelectionCount').textContent='선택한 기술 '+selected.length+'/30개';for(const name of selected){const b=el('button',name+' ×');b.type='button';b.setAttribute('aria-label',name+' 선택 해제');b.onclick=()=>toggleSkill(name);chips.append(b)}for(const item of skillCatalog){if(query&&![item.name,...item.aliases].some(v=>v.toLowerCase().includes(query)))continue;const b=el('button',(selected.includes(item.name)?'✓ ':'')+item.name);b.type='button';b.setAttribute('aria-pressed',String(selected.includes(item.name)));b.onclick=()=>toggleSkill(item.name);choices.append(b)}if(!choices.children.length)choices.append(el('p','검색 결과가 없습니다. 목록에 없는 기술 추가를 이용하세요.'));}
+document.querySelector('#skillSearch').oninput=()=>{document.querySelector('#skillChoices').parentElement.open=true;renderSkillPicker()};
+document.querySelector('#addCustomSkill').onclick=()=>{let value=document.querySelector('#customSkill').value.trim();if(!value)return;if(/[,;\n]/.test(value)){message('기술 이름을 한 개씩 추가하세요.');return}value=skillCatalog.find(i=>[i.name,...i.aliases].some(a=>a.toLowerCase()===value.toLowerCase()))?.name||value;if(!chosenSkills().includes(value))toggleSkill(value);document.querySelector('#customSkill').value=''};
+let analysisSequence=0,analysisFilterKey='';
+function analysisKey(){const p=new URLSearchParams(new FormData(form));p.delete('sort');p.set('open_only',String(document.querySelector('#openOnly').checked));p.set('bookmarked_only',String(document.querySelector('#bookmarkedOnly').checked));return p.toString()}
+function invalidateAnalysis(){if(analysisFilterKey!==analysisKey()){analysisSequence++;analysisFilterKey=analysisKey();document.querySelector('#analysisStatus').textContent='현재 검색 조건으로 분석할 수 있습니다.';document.querySelector('#analysisResult').replaceChildren()}}
+document.querySelector('#analyzeJobs').onclick=async()=>{const sequence=++analysisSequence, searchAtStart=analysisKey(),status=document.querySelector('#analysisStatus'),box=document.querySelector('#analysisResult');analysisFilterKey=searchAtStart;box.replaceChildren();status.textContent='공고의 필수·우대 조건을 분석하고 있습니다…';const params=new URLSearchParams(new FormData(form));params.set('open_only',String(document.querySelector('#openOnly').checked));params.set('bookmarked_only',String(document.querySelector('#bookmarkedOnly').checked));for(const [key,value] of [...params])if(!value)params.delete(key);try{const response=await fetch('/api/job-analysis?'+params);if(!response.ok)throw Error('분석 요청 실패');const data=await response.json();if(sequence!==analysisSequence||searchAtStart!==analysisKey())return;status.textContent='검색 결과 '+data.total+'건 중 '+data.analyzed+'건 분석 · '+data.scope+' · 분석 시각 '+new Date().toLocaleTimeString('ko-KR');box.append(el('p','필수·우대·일반 언급은 공고 단위로 집계하며, 한 공고가 여러 구분에 포함될 수 있습니다. 전체 채용 시장의 통계나 지원 적합도 점수가 아닙니다.','small-note'));if(!data.analyzed){box.append(el('p','분석할 공고가 없습니다. 검색 조건을 넓혀보세요.'));return}const wrap=el('div');wrap.style.overflowX='auto';const table=el('table');table.style.width='100%';const head=el('tr');for(const label of ['기술','내 선택','필수·자격요건','우대','일반 언급','전체 언급'])head.append(el('th',label));table.append(head);for(const row of data.technologies){const tr=el('tr');for(const v of [row.skill,row.selected?'선택됨':'미선택',row.required,row.preferred,row.mentioned,row.posting_count])tr.append(el('td',v));table.append(tr)}wrap.append(table);box.append(wrap);box.append(el('h3','이력서에 연결할 내 경험'));box.append(el('p',data.resume_focus.length?data.resume_focus.join(' · '):'선택한 기술과 공고의 교집합이 없습니다.'));box.append(el('p','공고 원문과 추가 확인할 미선택 기술: '+(data.investigate.join(' · ')||'없음')));for(const guide of data.guidance){box.append(el('h3',guide.title));box.append(el('p',guide.body))}const evidence=el('details');evidence.append(el('summary','기술별 공고 근거 보기'));for(const row of data.technologies){for(const sample of row.examples){const p=el('p',row.skill+' / '+({'required':'필수·자격요건','preferred':'우대','mentioned':'일반 언급'}[sample.category])+': '+sample.text+' ');const a=el('a',sample.title);a.href=safeUrl(sample.url);a.target='_blank';a.rel='noopener noreferrer';p.append(a);evidence.append(p)}}box.append(evidence)}catch(e){if(sequence===analysisSequence)status.textContent=e.message}};
+function applySkillProfile(profile){form.elements.skills.value=profile.skills.join(', ');form.elements.role.value=profile.role||'';form.elements.skill_mode.value='any';form.elements.sort.value='match';form.elements.it_only.value='true';renderSkillPicker();}
+async function initSkills(){try{const catalogResponse=await fetch('/api/skill-catalog');if(catalogResponse.ok)skillCatalog=await catalogResponse.json();const r=await fetch('/api/skill-profile');if(!r.ok)return;const profile=await r.json();let saved={};try{saved=JSON.parse(localStorage.getItem('radar-search-v1')||'{}')}catch{}if(!Object.hasOwn(saved.fields||{},'skills')&&profile.skills.length)applySkillProfile(profile);document.querySelector('#skillProfileStatus').textContent=profile.skills.length?'이 PC에 저장된 기술 '+profile.skills.length+'개':'';}catch{}renderSkillPicker();}
 document.querySelector('#saveSkillProfile').onclick=async()=>{try{const skills=form.elements.skills.value.split(/[,;\n]+/).map(x=>x.trim()).filter(Boolean);const profile=await write('/api/skill-profile','PUT',{skills,role:form.elements.role.value});applySkillProfile(profile);document.querySelector('#skillProfileStatus').textContent='내 기술 '+profile.skills.length+'개를 이 PC에 저장했습니다.';page=1;await load()}catch(e){message(e.message)}};
 document.querySelector('#loadSkillProfile').onclick=async()=>{try{const r=await fetch('/api/skill-profile');if(!r.ok)throw Error('기술 프로필을 읽지 못했습니다.');applySkillProfile(await r.json());page=1;await load()}catch(e){message(e.message)}};
-document.querySelector('#clearSkillFilter').onclick=()=>{form.elements.skills.value='';form.elements.role.value='';form.elements.sort.value='newest';page=1;load()};
+document.querySelector('#clearSkillFilter').onclick=()=>{form.elements.skills.value='';form.elements.role.value='';form.elements.sort.value='newest';renderSkillPicker();page=1;load()};
 async function load(){
   if(!searchReady)return;
+  renderSkillPicker();invalidateAnalysis();
   const request=++searchSequence;if(searchController)searchController.abort();searchController=new AbortController();saveSearch();
   error.textContent='';summary.textContent='검색 중…';
   const params=new URLSearchParams(new FormData(form));

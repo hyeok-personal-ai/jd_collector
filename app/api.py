@@ -495,3 +495,29 @@ def save_skill_profile(body:SkillProfile):
     with ControlStore().connection() as db:
         db.execute("INSERT INTO settings(key,value) VALUES('skill_profile',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",(json.dumps(profile,ensure_ascii=False),))
     return profile
+
+
+@app.get('/api/skill-catalog')
+def skill_catalog():
+    from .skill_matching import CATALOG
+    return [{'name':name,'aliases':aliases} for name,aliases in CATALOG.items()]
+
+
+@app.get('/api/job-analysis')
+def analyze_jobs(db: SessionDep, keyword: str | None=None, source_id: str | None=None,
+                 recruitment_type: str | None=None, region: str | None=None,
+                 open_only: bool=True, it_only: bool=False, entry_only: bool=False,
+                 include_unknown_entry: bool=False, bookmarked_only: bool=False,
+                 korea_only: bool=False, skills: str=Query('',max_length=1200),
+                 skill_mode: Literal['any','all']='any', role: Literal['','backend_infra']=''):
+    from .job_analysis import summarize_jobs
+    try: selected=normalize_skills(skills)
+    except ValueError as exc: raise HTTPException(422,str(exc))
+    if selected: ensure_skill_index(db)
+    conditions=job_conditions(keyword=keyword,source_id=source_id,recruitment_type=recruitment_type,
+        region=region,open_only=open_only,it_only=it_only,entry_only=entry_only,
+        include_unknown_entry=include_unknown_entry,bookmarked_only=bookmarked_only,
+        korea_only=korea_only,skills=selected,skill_mode=skill_mode,role=role)
+    total=db.scalar(select(func.count()).select_from(Job).where(*conditions)) or 0
+    jobs=db.scalars(select(Job).where(*conditions).order_by(Job.posted_on.desc(),Job.id.desc()).limit(300)).all()
+    return summarize_jobs(jobs,selected,total)
