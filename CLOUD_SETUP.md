@@ -42,3 +42,13 @@ Development mode also samples the latest three official recruitment sitemaps wit
 Run `python -m app.source_diagnostics` to compare robots and the first public WordPress list using the normal collector user agent and policy checks. It prints response status, content hashes, safe headers, pagination and runtime versions; never response bodies, cookies, tokens or arbitrary query values. Cloud collection records the failing response metadata in private state. A successful probe cannot prove every later page is accessible.
 
 WordPress pages are saved incrementally. Completed pages survive a later failure or time limit, restored pages are read in numerical order, and absence checks run only after the current list has been fully reconciled. Access denials still stop collection; no challenge-solving or alternate identities are used.
+
+### Local skill matching
+
+Save a comma-separated technology profile in the local app, then filter for any or all selected technologies and optionally backend/server/infrastructure titles. Sort by the number of technologies mentioned. Matching uses title/body mentions and aliases; it does not determine eligibility or distinguish required from preferred qualifications. Profiles stay in local control storage and are excluded from cloud snapshots. A derived index refreshes when collected content changes.
+
+### Private automatic collection audits
+
+The private runtime workflow runs an `audit` job after collection with `needs: collect` and `if: always() && github.event.repository.private == true`. It invokes `python3 scripts/audit_private_run.py` with the built-in repo token and `COLLECT_RESULT` from the collection job. The job needs `contents: write` and `actions: read`; do not enable collection or audits in a public repository.
+
+Audits classify browser challenges, robots restrictions, HTTP access denial, rate limits, workflow failures, and normal time-budget continuation. They reject stale snapshots as evidence of current success. Reports are stored only on the private `state` branch at `audits/<run_id>.json` and `latest-audit.json`. HTTP bodies and credentials are omitted. A failed or cancelled workflow may prevent even its audit job from executing; the workflow status remains the fallback evidence. Scheduled Actions run without the local PC, subject to GitHub scheduling availability.

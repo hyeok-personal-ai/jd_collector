@@ -9,7 +9,7 @@ ROOT_FILES = {'.gitignore', '.env.example', 'README.md', 'PUBLICATION.md',
               'CHANGELOG.md', 'CLOUD_SETUP.md', 'pyproject.toml', 'start.ps1'}
 FOLDERS = {'app': {'.py', '.json', '.html'}, 'tests': {'.py'},
            'fixtures': {'.json', '.jsonl', '.html'}, 'sources': {'.json', '.txt'}}
-SCRIPTS = {'scripts/check_publication.py', 'scripts/seed_zighang_company_discovery.py'}
+SCRIPTS = {'scripts/audit_private_run.py', 'scripts/check_publication.py', 'scripts/seed_zighang_company_discovery.py'}
 PATTERNS = {
     'private key': re.compile(r'-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----'),
     'GitHub credential': re.compile(r'\b(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{30,})\b'),

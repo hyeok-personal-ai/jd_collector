@@ -26,6 +26,7 @@ from fastapi.responses import Response
 from pydantic import BaseModel, ConfigDict, Field
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from .control import ControlStore
+from .skill_matching import normalize_skills, score_expression, match_details, BACKEND_TITLE, ensure_skill_index
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
@@ -165,7 +166,7 @@ def status_summary(db: SessionDep):
 
 def job_conditions(*, keyword=None, source_id=None, recruitment_type=None, region=None,
                    open_only=False, it_only=False, entry_only=False, include_unknown_entry=False,
-                   bookmarked_only=False, korea_only=False):
+                   bookmarked_only=False, korea_only=False, skills=None, skill_mode="any", role=""):
     conditions = []
     if bookmarked_only:
         conditions.append(Job.id.in_(ControlStore().bookmarks()))
@@ -198,6 +199,11 @@ def job_conditions(*, keyword=None, source_id=None, recruitment_type=None, regio
             JobClassification.source_id == Job.source_id,
             JobClassification.external_id == Job.external_id,
             JobClassification.career.in_(levels))))
+    if skills:
+        score=score_expression(skills)
+        conditions.append(score >= (len(skills) if skill_mode=="all" else 1))
+    if role=="backend_infra":
+        conditions.append(Job.title.regexp_match(BACKEND_TITLE))
     return conditions
 
 
@@ -214,16 +220,25 @@ def search_jobs(
     include_unknown_entry: bool = False,
     bookmarked_only: bool = False,
     korea_only: bool = False,
-    sort: Literal["newest", "deadline"] = "newest",
+    skills: str = Query("",max_length=1200),
+    skill_mode: Literal["any","all"] = "any",
+    role: Literal["","backend_infra"] = "",
+    sort: Literal["newest", "deadline", "match"] = "newest",
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
 ):
+    try:selected_skills=normalize_skills(skills)
+    except ValueError as exc:raise HTTPException(422,str(exc))
+    if selected_skills:ensure_skill_index(db)
     conditions = job_conditions(keyword=keyword, source_id=source_id, recruitment_type=recruitment_type,
         region=region, open_only=open_only, it_only=it_only, entry_only=entry_only,
-        include_unknown_entry=include_unknown_entry, bookmarked_only=bookmarked_only, korea_only=korea_only)
+        include_unknown_entry=include_unknown_entry, bookmarked_only=bookmarked_only, korea_only=korea_only,
+        skills=selected_skills,skill_mode=skill_mode,role=role)
     statement = select(Job).where(*conditions)
     total = db.scalar(select(func.count()).select_from(Job).where(*conditions)) or 0
-    if sort == "deadline":
+    if sort == "match" and selected_skills:
+        statement = statement.order_by(score_expression(selected_skills).desc(),Job.posted_on.desc(),Job.id.desc())
+    elif sort == "deadline":
         statement = statement.order_by(Job.deadline_on.is_(None), Job.deadline_on.asc(), Job.id.desc())
     else:
         statement = statement.order_by(Job.posted_on.desc(), Job.id.desc())
@@ -237,6 +252,7 @@ def search_jobs(
     for job in jobs:
         d = JobOut.model_validate(job).model_dump(mode='json')
         d['bookmarked'] = job.id in saved_ids
+        d['skill_match'] = match_details(job,selected_skills) if selected_skills else None
         label = by_key.get((job.source_id,job.external_id))
         d['classification'] = ({'it_match':label.it_match, 'career':label.career,
                                 'min_years':label.min_years,'max_years':label.max_years,
@@ -405,14 +421,21 @@ def export_jobs(db: SessionDep, bookmarked_only: bool = False,
                 recruitment_type: str | None = None, region: str | None = None,
                 open_only: bool = False, it_only: bool = False, entry_only: bool = False,
                 include_unknown_entry: bool = False, korea_only: bool = False,
-                sort: Literal['newest','deadline'] = 'newest'):
+                sort: Literal['newest','deadline','match'] = 'newest',
+                skills: str = Query('',max_length=1200), skill_mode: Literal['any','all']='any',
+                role: Literal['','backend_infra']=''):
     import csv
     import io
+    try:selected_skills=normalize_skills(skills)
+    except ValueError as exc:raise HTTPException(422,str(exc))
+    if selected_skills:ensure_skill_index(db)
     conditions=job_conditions(keyword=keyword,source_id=source_id,recruitment_type=recruitment_type,
         region=region,open_only=open_only,it_only=it_only,entry_only=entry_only,
-        include_unknown_entry=include_unknown_entry,bookmarked_only=bookmarked_only,korea_only=korea_only)
+        include_unknown_entry=include_unknown_entry,bookmarked_only=bookmarked_only,korea_only=korea_only,
+        skills=selected_skills,skill_mode=skill_mode,role=role)
     statement=select(Job).where(*conditions)
     statement=statement.order_by(Job.deadline_on.is_(None),Job.deadline_on.asc(),Job.id.desc()) if sort=='deadline' else statement.order_by(Job.posted_on.desc(),Job.id.desc())
+    if sort=='match' and selected_skills:statement=statement.order_by(None).order_by(score_expression(selected_skills).desc(),Job.posted_on.desc(),Job.id.desc())
     statement=statement.limit(10000)
     stream = io.StringIO(newline='')
     writer = csv.writer(stream)
@@ -448,3 +471,27 @@ def metrics(db: SessionDep):
 def backup():
     from .maintenance import create_backup
     return create_backup()
+
+
+class SkillProfile(BaseModel):
+    skills: list[str] = Field(default_factory=list,max_length=30)
+    role: Literal['','backend_infra'] = ''
+
+
+@app.get('/api/skill-profile')
+def read_skill_profile():
+    with ControlStore().connection() as db:
+        row=db.execute("SELECT value FROM settings WHERE key='skill_profile'").fetchone()
+    import json
+    return json.loads(row[0]) if row else {'skills':[],'role':''}
+
+
+@app.put('/api/skill-profile')
+def save_skill_profile(body:SkillProfile):
+    import json
+    try:skills=normalize_skills(body.skills)
+    except ValueError as exc:raise HTTPException(422,str(exc))
+    profile={'skills':skills,'role':body.role}
+    with ControlStore().connection() as db:
+        db.execute("INSERT INTO settings(key,value) VALUES('skill_profile',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",(json.dumps(profile,ensure_ascii=False),))
+    return profile

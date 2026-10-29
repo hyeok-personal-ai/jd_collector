@@ -43,6 +43,13 @@ class Job(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
+class JobSkillIndex(Base):
+    __tablename__ = 'job_skill_index'
+    job_id: Mapped[int] = mapped_column(primary_key=True)
+    content_hash: Mapped[str] = mapped_column(String(64))
+    terms: Mapped[str] = mapped_column(Text)
+
+
 class RawPosting(Base):
     """Save parsed source payload separately so model upgrades need no re-crawl."""
     __tablename__ = "raw_postings"

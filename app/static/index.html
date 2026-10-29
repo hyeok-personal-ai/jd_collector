@@ -63,6 +63,20 @@
   <section class="verification-panel" aria-label="직행·인디스워크 수집"><h2>직행 · 인디스워크 우선 수집</h2><p class="small-note">진행 중 공고 우선 · 확정 기한은 로컬 마감 처리 · 상시·조기마감·기한 미확인은 원문 재확인. 주소 발견과 본문 저장 건수를 따로 표시합니다.</p><div class="action-row"><button id="collectAggregates" class="primary">두 사이트 수집 시작</button><button id="showZighang">직행 공고 보기</button><button id="showInthiswork">인디스워크 공고 보기</button></div><div class="action-row"><label>직행 수집 범위 <select id="zighangMode"><option value="development">개발 후보만</option><option value="all">전체 직무 사이트맵</option></select></label><button id="saveZighangMode">범위 적용</button></div><details><summary>직행 개발 공고 링크 추가</summary><p class="small-note">검색이나 직행에서 찾은 공개 공고 주소를 줄마다 붙여 넣으면 원문을 확인합니다. 검색 후보 목록은 전체 개발 공고 목록이 아닙니다.</p><textarea id="zighangLinks" rows="4" style="width:100%" aria-label="직행 개발 공고 주소"></textarea><button id="addZighangLinks">개발 후보 추가</button></details><div class="small-note" id="cloudStatus">클라우드 연결 확인 중…</div><button id="syncCloud" style="width:auto">클라우드 공고 가져오기</button><div id="aggregateStatus" class="verification-list">진행 현황 확인 중…</div></section>
 </details>
     <form id="search" class="panel" aria-label="공고 검색">
+    <div style="grid-column:1/-1;background:#f0f7f5;padding:16px;border-radius:12px">
+      <h2 style="margin:0 0 10px;font-size:18px">내 기술로 공고 찾기</h2>
+      <label for="skillInput">보유 기술 <span class="small-note">쉼표로 구분 · 최대 30개</span></label>
+      <input id="skillInput" name="skills" aria-label="보유 기술" maxlength="1200" placeholder="Python, Java, Spring, SQL" style="margin:8px 0" />
+      <div class="action-row">
+        <select name="skill_mode" aria-label="기술 일치 조건"><option value="any">하나 이상 언급</option><option value="all">입력 기술 모두 언급</option></select>
+        <select name="role" aria-label="희망 직무"><option value="">전체 직무 제목</option><option value="backend_infra">백엔드·서버/인프라 관련 제목</option></select>
+        <button type="button" id="saveSkillProfile">내 기술 저장·적용</button>
+        <button type="button" id="loadSkillProfile">저장한 기술 불러오기</button>
+        <button type="button" id="clearSkillFilter">기술 필터 해제</button>
+      </div>
+      <p class="small-note">제목·본문에 언급된 기술을 비교합니다. 필수·우대 조건과 숙련도 충족 여부는 원문에서 확인하세요. 내 기술 프로필은 이 PC에만 저장됩니다.</p>
+      <p id="skillProfileStatus" class="small-note" role="status"></p>
+    </div>
     <input name="keyword" aria-label="키워드" placeholder="공고명, 기관명, 상세 내용 검색" />
     <select name="source_id" aria-label="공고 출처"><option value="">전체 출처</option></select>
     <input name="region" aria-label="지역" placeholder="지역 (예: 서울)" />
@@ -75,7 +89,7 @@
     <select name="recruitment_type" aria-label="유형">
       <option value="">전체 유형</option><option>채용</option><option>인턴</option><option>교육</option><option>모집</option>
     </select>
-    <select name="sort" aria-label="정렬"><option value="newest">최신 등록일순</option><option value="deadline">마감일 빠른순</option></select>
+    <select name="sort" aria-label="정렬"><option value="newest">최신 등록일순</option><option value="deadline">마감일 빠른순</option><option value="match">내 기술 언급 많은 순</option></select>
     <select name="korea_only" aria-label="근무 국가"><option value="">전체 국가</option><option value="true">한국 근무</option></select><button type="button" id="developmentPreset">개발 공고 전체 경력</button><button type="button" id="juniorPreset">국내 IT 신입·인턴</button><button type="submit" style="background:#173d67;color:white;border-color:#173d67;cursor:pointer">검색</button>
   </form>
   <div class="tools">
@@ -132,6 +146,7 @@ function render(items){
     const expired=j.source_status==='closed'||(j.deadline_on&&j.deadline_on<today);
     meta.append(el('span',expired?'· 마감 확인 / 마감일 경과':(j.deadline_on?'· 마감 '+j.deadline_on:(j.deadline_text?'· '+j.deadline_text:'· 마감일 미정')),expired?'pill expired':'pill'));
     card.append(meta);
+    if(j.skill_match){const m=j.skill_match;card.append(el('p','내 기술 '+m.count+'/'+m.selected_count+'개 언급 · '+m.matched.join(' · '),'small-note'));}
     const h2=el('h2'), a=el('a',j.title);a.href=safeUrl(j.original_url);a.target='_blank';a.rel='noopener noreferrer';h2.append(a);card.append(h2);
     if(j.body_text)card.append(el('p',j.body_text.slice(0,180)+(j.body_text.length>180?'…':''),'desc'));
     const foot=el('div',null,'meta');if(j.posted_on)foot.append(el('span','등록 '+j.posted_on));
@@ -141,6 +156,11 @@ function render(items){
     card.append(foot);list.append(card);
   }
 }
+function applySkillProfile(profile){form.elements.skills.value=profile.skills.join(', ');form.elements.role.value=profile.role||'';form.elements.skill_mode.value='any';form.elements.sort.value='match';form.elements.it_only.value='true';}
+async function initSkills(){try{const r=await fetch('/api/skill-profile');if(!r.ok)return;const profile=await r.json();let saved={};try{saved=JSON.parse(localStorage.getItem('radar-search-v1')||'{}')}catch{}if(!Object.hasOwn(saved.fields||{},'skills')&&profile.skills.length)applySkillProfile(profile);document.querySelector('#skillProfileStatus').textContent=profile.skills.length?'이 PC에 저장된 기술 '+profile.skills.length+'개':'';}catch{}}
+document.querySelector('#saveSkillProfile').onclick=async()=>{try{const skills=form.elements.skills.value.split(/[,;\n]+/).map(x=>x.trim()).filter(Boolean);const profile=await write('/api/skill-profile','PUT',{skills,role:form.elements.role.value});applySkillProfile(profile);document.querySelector('#skillProfileStatus').textContent='내 기술 '+profile.skills.length+'개를 이 PC에 저장했습니다.';page=1;await load()}catch(e){message(e.message)}};
+document.querySelector('#loadSkillProfile').onclick=async()=>{try{const r=await fetch('/api/skill-profile');if(!r.ok)throw Error('기술 프로필을 읽지 못했습니다.');applySkillProfile(await r.json());page=1;await load()}catch(e){message(e.message)}};
+document.querySelector('#clearSkillFilter').onclick=()=>{form.elements.skills.value='';form.elements.role.value='';form.elements.sort.value='newest';page=1;load()};
 async function load(){
   if(!searchReady)return;
   const request=++searchSequence;if(searchController)searchController.abort();searchController=new AbortController();saveSearch();
@@ -231,7 +251,7 @@ async function refreshAggregates(){const r=await fetch('/api/aggregate-status');
   function showAggregate(source){form.reset();document.querySelector('#openOnly').checked=true;document.querySelector('#bookmarkedOnly').checked=false;form.elements.source_id.value=source;page=1;load()}
   document.querySelector('#showZighang').onclick=()=>showAggregate('zighang');
   document.querySelector('#showInthiswork').onclick=()=>showAggregate('inthiswork');
-  sources().finally(()=>{restoreSearch();searchReady=true;load()});refreshTargets().catch(e=>message(e.message));loadQa();refreshControl(true);setInterval(()=>refreshControl(),5000);
+  sources().finally(async()=>{restoreSearch();await initSkills();searchReady=true;load()});refreshTargets().catch(e=>message(e.message));loadQa();refreshControl(true);setInterval(()=>refreshControl(),5000);
 </script>
 </body>
 </html>
