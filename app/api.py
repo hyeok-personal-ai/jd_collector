@@ -661,3 +661,154 @@ def reject_duplicate_pair(job_id: int, other_id: int, db: SessionDep):
     if db.get(Job,job_id) is None or db.get(Job,other_id) is None:raise HTTPException(404,'Posting not found')
     ControlStore().reject_duplicate(job_id,other_id)
     return {'rejected':True}
+
+# Private documents stay in a separate local DB, outside cloud snapshots.
+class DocumentInput(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    title: str = Field(min_length=1,max_length=160)
+    kind: Literal['resume','portfolio','experience'] = 'resume'
+    variant: str = Field('',max_length=80)
+    text: str = Field('',max_length=120000)
+    filename: str = Field('',max_length=200)
+    file_base64: str = Field('',max_length=16000000)
+    enabled: bool = True
+
+
+def document_text(body):
+    from .experience import extract_document
+    if body.file_base64:
+        import base64,binascii
+        try: data=base64.b64decode(body.file_base64,validate=True)
+        except (ValueError,binascii.Error):raise HTTPException(422,'파일 인코딩을 읽지 못했습니다.')
+        return extract_document(body.filename,data)
+    return body.text
+
+
+@app.get('/api/documents')
+def list_documents():
+    from .experience import ExperienceStore
+    return {'items':ExperienceStore().list(),'privacy':'local_only'}
+
+
+@app.get('/api/documents/{document_id}')
+def read_document(document_id:int):
+    from .experience import ExperienceStore
+    try:return ExperienceStore().get(document_id)
+    except KeyError:raise HTTPException(404,'Document not found')
+
+
+@app.post('/api/documents')
+def add_document(body:DocumentInput):
+    from .experience import ExperienceStore
+    try:return ExperienceStore().save(body.title,body.kind,body.variant,document_text(body),body.enabled)
+    except ValueError as exc:raise HTTPException(422,str(exc))
+
+
+@app.put('/api/documents/{document_id}')
+def edit_document(document_id:int,body:DocumentInput):
+    from .experience import ExperienceStore
+    try:return ExperienceStore().save(body.title,body.kind,body.variant,document_text(body),body.enabled,document_id)
+    except ValueError as exc:raise HTTPException(422,str(exc))
+    except KeyError:raise HTTPException(404,'Document not found')
+
+
+@app.delete('/api/documents/{document_id}')
+def remove_document(document_id:int):
+    from .experience import ExperienceStore
+    try:ExperienceStore().delete(document_id)
+    except KeyError:raise HTTPException(404,'Document not found')
+    return {'deleted':True}
+
+
+class RecommendationFilters(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    keyword: str | None = Field(None,max_length=150)
+    source_id: str | None = None
+    recruitment_type: str | None = None
+    employment_type: EmploymentFilter = ''
+    application_status: ApplicationStatus | Literal[''] = ''
+    region: str | None = None
+    open_only: bool = True
+    it_only: bool = True
+    entry_only: bool = False
+    include_unknown_entry: bool = False
+    bookmarked_only: bool = False
+    korea_only: bool = False
+    skills: str = Field('',max_length=1200)
+    skill_mode: Literal['any','all'] = 'any'
+    role: RoleFilter = ''
+
+    def conditions(self,db):
+        args=self.model_dump()
+        args['skills']=normalize_skills(args['skills'])
+        if args['skills']:ensure_skill_index(db)
+        return job_conditions(**args)
+
+
+class RecommendationInput(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    document_ids: list[int] = Field(min_length=1,max_length=20)
+    filters: RecommendationFilters = Field(default_factory=RecommendationFilters)
+    limit: int = Field(20,ge=1,le=50)
+
+
+@app.post('/api/recommendations')
+def recommend_documents(body:RecommendationInput,db:SessionDep):
+    from .experience import recommend
+    try:return recommend(db,body.document_ids,body.filters.conditions(db),body.limit)
+    except ValueError as exc:raise HTTPException(422,str(exc))
+
+
+class ReportInput(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    kind: Literal['posting','market','experience'] = 'posting'
+    format: Literal['md','html','pdf'] = 'html'
+    ids: list[int] = Field(default_factory=list,max_length=4)
+    document_ids: list[int] = Field(default_factory=list,max_length=20)
+    filters: RecommendationFilters = Field(default_factory=RecommendationFilters)
+
+
+@app.post('/api/reports')
+def export_report(body:ReportInput,db:SessionDep):
+    from . import reports
+    from .posting_analysis import structured_analysis
+    try:
+        if body.kind=='posting':
+            if not body.ids:raise ValueError('공고를 1~4개 선택하세요.')
+            jobs=[db.get(Job,i) for i in dict.fromkeys(body.ids)]
+            if any(j is None for j in jobs):raise HTTPException(404,'Posting not found')
+            blocks=reports.posting_report([structured_analysis(j) for j in jobs])
+        elif body.kind=='market':
+            from .job_analysis import summarize_jobs
+            conditions=body.filters.conditions(db)
+            total=db.scalar(select(func.count()).select_from(Job).where(*conditions)) or 0
+            jobs=db.scalars(select(Job).where(*conditions).execution_options(yield_per=300))
+            data=summarize_jobs(jobs,normalize_skills(body.filters.skills),total)
+            import json
+            blocks=reports.market_report(data,json.dumps(body.filters.model_dump(),ensure_ascii=False))
+        else:
+            from .experience import recommend
+            data=recommend(db,body.document_ids,body.filters.conditions(db),10)
+            if data['status']!='ready':raise HTTPException(409,'문서 색인이 끝난 뒤 다시 시도하세요.')
+            blocks=reports.experience_report(data)
+        content={'md':reports.markdown,'html':reports.html_report,'pdf':reports.pdf_report}[body.format](blocks)
+    except ValueError as exc:raise HTTPException(422,str(exc))
+    media={'md':'text/markdown; charset=utf-8','html':'text/html; charset=utf-8','pdf':'application/pdf'}[body.format]
+    return Response(content,media_type=media,headers={'Content-Disposition':f'attachment; filename="radar-{body.kind}.{body.format}"','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'})
+
+class ScheduleQAInput(BaseModel):
+    model_config=ConfigDict(extra='forbid')
+    keys:list[str]=Field(min_length=1,max_length=3)
+    interval_seconds:int=Field(120,ge=60,le=600)
+    duration_seconds:int=Field(900,ge=120,le=1800)
+
+
+@app.post('/api/qa-schedule')
+def begin_schedule_qa(body:ScheduleQAInput):
+    try:return ControlStore().begin_qa(body.keys,body.interval_seconds,body.duration_seconds)
+    except ValueError as exc:raise HTTPException(422,str(exc))
+
+
+@app.delete('/api/qa-schedule')
+def finish_schedule_qa():
+    return ControlStore().end_qa()

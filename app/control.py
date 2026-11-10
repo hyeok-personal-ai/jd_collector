@@ -113,9 +113,48 @@ class ControlStore:
 
     def settings(self):
         with self.connection() as db:
-            return {r['key']: json.loads(r['value']) for r in db.execute('SELECT * FROM settings')}
+            settings = {r['key']: json.loads(r['value']) for r in db.execute('SELECT * FROM settings')}
+            qa = settings.get('qa_schedule') or {}
+            if qa.get('expires_at', 0) and qa['expires_at'] <= time.time():
+                self._end_qa(db, settings)
+            return settings
+
+    @staticmethod
+    def _end_qa(db, settings):
+        qa = settings.get('qa_schedule') or {}
+        for key in qa.get('keys', []):
+            db.execute("UPDATE targets SET next_due=MAX(next_due,COALESCE(checked_at,?)+86400) WHERE key=? AND status IN ('completed','limited')", (time.time(),key))
+        settings.update(auto_collect=True, interval_hours=24, qa_schedule={})
+        for key in ('auto_collect','interval_hours','qa_schedule'):
+            db.execute('INSERT OR REPLACE INTO settings VALUES (?,?)',(key,json.dumps(settings[key])))
+
+    def begin_qa(self, keys, interval_seconds=120, duration_seconds=900):
+        if not keys or not 60 <= interval_seconds <= 600 or not 120 <= duration_seconds <= 1800:
+            raise ValueError('QA는 1~10분 간격, 2~30분 동안 진행할 수 있습니다.')
+        now=time.time()
+        with self.connection() as db:
+            for key in keys:
+                row=db.execute('SELECT spec,status FROM targets WHERE key=?',(key,)).fetchone()
+                if not row or json.loads(row['spec'])['kind'] != 'public' or row['status'] != 'completed':
+                    raise ValueError('주기 단축은 마지막 수집이 성공한 공개 ATS 대상에만 적용합니다. 제한 출처의 휴식은 유지됩니다.')
+            qa={'keys':list(dict.fromkeys(keys)),'interval_seconds':interval_seconds,'expires_at':now+duration_seconds,'started_at':now}
+            for key,value in {'qa_schedule':qa,'auto_collect':True,'interval_hours':24}.items():
+                db.execute('INSERT OR REPLACE INTO settings VALUES (?,?)',(key,json.dumps(value)))
+            for key in keys:
+                db.execute('UPDATE targets SET next_due=? WHERE key=?',(now,key))
+        return qa
+
+    def end_qa(self):
+        settings=self.settings()
+        with self.connection() as db:
+            self._end_qa(db,settings)
+        return settings
 
     def save_settings(self, changes):
+        # An explicit pause/settings change cancels temporary QA. Its expiry
+        # must never silently turn collection back on after the user paused it.
+        if ('interval_hours' in changes or changes.get('auto_collect') is False) and self.settings().get('qa_schedule'):
+            self.end_qa()
         with self.connection() as db:
             for key, value in changes.items():
                 db.execute('UPDATE settings SET value=? WHERE key=?', (json.dumps(value), key))
@@ -172,7 +211,11 @@ class ControlStore:
 
     def finish(self, task, *, status, seen=0, created=0, updated=0, error='', run_id=None):
         now = time.time()
-        interval = self.settings()['interval_hours'] * 3600
+        settings = self.settings()
+        interval = settings['interval_hours'] * 3600
+        qa = settings.get('qa_schedule') or {}
+        if task['target_key'] in qa.get('keys', []) and qa.get('expires_at',0)>now:
+            interval = qa['interval_seconds']
         success = status in ('completed', 'limited')
         with self.connection() as db:
             target = db.execute('SELECT failures FROM targets WHERE key=?', (task['target_key'],)).fetchone()
@@ -182,7 +225,7 @@ class ControlStore:
             if not success and 'robots.txt check returned' in error.lower():
                 # No content requests until the next successful robots check.
                 # Revisit a temporarily unavailable rules document with a bounded cooldown.
-                delay=min(interval,max(1800,300*2**min(failures,7)))
+                delay=min(settings['interval_hours']*3600,max(1800,300*2**min(failures,7)))
             if not success and 'browser security challenge' in error.lower():
                 delay=min(86400,max(21600,interval))
             db.execute('''UPDATE targets SET status=?,checked_at=?,next_due=?,failures=?,seen=?,created=?,updated=?,error=? WHERE key=?''',

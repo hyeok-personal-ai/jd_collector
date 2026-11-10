@@ -16,8 +16,8 @@ from .posting_analysis import structured_analysis, plain_body
 from .posting_sections import extract_sections
 
 MODEL = 'sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2'
-MODEL_KEY = MODEL + ':sections-token100-overlap20-v4'
-REUSABLE_MODEL_KEYS = {MODEL + ':sections-token100-overlap20-v2', MODEL + ':sections-token100-overlap20-v3'}
+MODEL_KEY = MODEL + ':sections-token100-overlap20-v5'
+REUSABLE_MODEL_KEYS = {MODEL + ':sections-token100-overlap20-v2', MODEL + ':sections-token100-overlap20-v3', MODEL + ':sections-token100-overlap20-v4'}
 DIM = 384
 
 
@@ -120,8 +120,10 @@ def worker(once=False):
         tokenizer.no_truncation();tokenizer.no_padding()
         init_db()
         while True:
+            from .experience import index_documents
+            documents_processed=index_documents(model,tokenizer)
             count=build_batch(model,tokenizer)
-            if count:continue
+            if count or documents_processed:continue
             status('ready')
             if once:break
             time.sleep(30)

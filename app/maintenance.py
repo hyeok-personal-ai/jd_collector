@@ -20,9 +20,11 @@ def database_paths():
     if url.get_backend_name() != 'sqlite' or not url.database or url.database == ':memory:':
         raise ValueError('Local backup supports file-based SQLite only')
     from .aggregate_store import AggregateStore
+    from .experience import ExperienceStore
     return {'recruit.sqlite3': Path(url.database).resolve(),
             'control.sqlite3': ControlStore().path.resolve(),
-            'inventory.sqlite3': Path(AggregateStore().path).resolve()}
+            'inventory.sqlite3': Path(AggregateStore().path).resolve(),
+            'experience.sqlite3': Path(ExperienceStore().path).resolve()}
 
 
 def create_backup():
@@ -64,7 +66,7 @@ def restore_backup(archive_path):
         with tempfile.TemporaryDirectory(prefix='radar-restore-') as temporary:
             with ZipFile(archive_path) as archive:
                 names=set(archive.namelist())
-                if names not in ({*paths,'manifest.json'},{'recruit.sqlite3','control.sqlite3','manifest.json'}):
+                if names not in ({*paths,'manifest.json'},{'recruit.sqlite3','control.sqlite3','inventory.sqlite3','manifest.json'},{'recruit.sqlite3','control.sqlite3','manifest.json'}):
                     raise ValueError('Unexpected backup archive contents')
                 restore_paths={name:path for name,path in paths.items() if name in names}
                 manifest = json.loads(archive.read('manifest.json'))

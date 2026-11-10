@@ -85,7 +85,8 @@ async def serve_queue(store=None):
                 last_local_check = time.monotonic()
             settings = store.settings()
             if settings['auto_collect'] and time.monotonic() - last_schedule >= 60:
-                store.enqueue(due_only=True)
+                qa=settings.get('qa_schedule') or {}
+                store.enqueue(qa.get('keys') or None,due_only=True)
                 last_schedule = time.monotonic()
             current = store.claim()
             if current is None:
@@ -105,15 +106,11 @@ async def serve_queue(store=None):
                     status = 'partial' if result.seen_count else failure_status(result.error_summary or '')
                 store.finish(current, status=status, seen=result.seen_count, created=result.created_count,
                              updated=result.updated_count, error=result.error_summary or '', run_id=result.id)
-                if status == 'limited' and store.settings()['auto_collect']:
-                    store.enqueue([current['target_key']])
             except asyncio.CancelledError:
                 store.finish(current, status='interrupted', error='Worker stopped; retry available')
                 raise
             except TimeoutError:
                 store.finish(current,status='limited',error='Time budget reached; saved progress resumes next batch')
-                if store.settings()['auto_collect']:
-                    store.enqueue([current['target_key']])
             except Exception as exc:
                 message = f'{type(exc).__name__}: {str(exc)[:800]}'
                 store.finish(current, status=failure_status(message), error=message)

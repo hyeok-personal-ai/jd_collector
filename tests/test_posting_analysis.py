@@ -178,3 +178,10 @@ def test_api_plain_body_preserves_stored_source_and_evidence_offsets(client):
         db.expire_all()
         assert db.get(Job,job.id).body_text==raw
     finally:session.close()
+
+
+def test_future_learning_stack_is_not_preferred_experience():
+    job=sample(body_text='우대사항\nAWS 프로젝트 경험\n함께 배우게 될 기술\nPython SQL Kafka\n함께 일하고 싶은 분\n협업을 좋아하는 분')
+    result=structured_analysis(job)
+    assert result['technologies']['preferred']==['AWS']
+    assert set(result['technologies']['mentioned'])=={'Python','SQL','Kafka'}
