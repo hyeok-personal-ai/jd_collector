@@ -36,6 +36,15 @@ def test_comparison_uses_same_requirement_category():
     assert 'Python' not in result['common_technologies']['required']
 
 
+def test_semantic_duplicate_precheck_rejects_intern_role_and_experience_conflicts():
+    from app.duplicate_review import compatible_pair
+    base=sample(title='Backend Engineer',body_text='경력 3~5년')
+    assert not compatible_pair(base,sample(title='Backend Engineer Intern',body_text=''))
+    assert not compatible_pair(base,sample(title='Data Engineer',body_text='경력 3~5년'))
+    assert not compatible_pair(base,sample(title='Backend Engineer',body_text='경력 8년 이상'))
+    assert compatible_pair(base,sample(title='백엔드 개발자',body_text='경력 3~5년'))
+
+
 def test_comparison_api_validates_selection_and_returns_evidence(client):
     ids=[j['id'] for j in client.get('/api/jobs').json()['items']]
     assert client.get('/api/compare',params={'ids':','.join(map(str,ids[:2]))}).status_code==200
