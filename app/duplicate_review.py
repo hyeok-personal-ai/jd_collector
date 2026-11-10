@@ -31,13 +31,18 @@ def candidates(db,job):
     exact=canonical_apply_url(job.apply_url)
     matches={}
     company_ids=[]
-    for other in db.scalars(select(Job).where(Job.id!=job.id)):
-        if other.id in excluded:continue
-        same_company=bool(company and company==normalize_company(other.organization))
+    rows=select(Job.id,Job.organization,Job.apply_url).where(Job.id!=job.id)
+    for other_id,organization,apply_url in db.execute(rows.execution_options(yield_per=256)):
+        if other_id in excluded:continue
+        same_company=bool(company and company==normalize_company(organization))
+        same_url=bool(exact and exact==canonical_apply_url(apply_url))
+        if not (same_company or same_url):continue
+        other=db.get(Job,other_id)
+        if other is None:continue
         compatible=compatible_pair(job,other) if same_company else False
         if same_company and compatible:company_ids.append(other.id)
         reason=None
-        if exact and exact==canonical_apply_url(other.apply_url):reason='same_application_url'
+        if same_url:reason='same_application_url'
         elif same_company and compatible and _title_parts(job.title)[0]==_title_parts(other.title)[0]:reason='same_company_title'
         if reason:
             matches[other.id]={'job':JobOut.model_validate(other).model_dump(mode='json'),'reason':reason,'similarity':None}
