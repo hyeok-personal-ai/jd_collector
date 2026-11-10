@@ -4,6 +4,17 @@ Set-Location -LiteralPath $PSScriptRoot
 $env:PYTHONUTF8 = '1'
 $env:RADAR_WORKER = '1'
 $env:RADAR_DATA_DIR = Join-Path $PSScriptRoot 'data'
+$activeRuntime = Join-Path $PSScriptRoot 'data\active-runtime.json'
+if (Test-Path -LiteralPath $activeRuntime) {
+    $active = Get-Content -LiteralPath $activeRuntime -Raw | ConvertFrom-Json
+    $runtimePath = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot $active.data_dir))
+    $allowedRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot 'data')) + [IO.Path]::DirectorySeparatorChar
+    if (-not $runtimePath.StartsWith($allowedRoot,[StringComparison]::OrdinalIgnoreCase) -or -not (Test-Path -LiteralPath (Join-Path $runtimePath 'recruit.db'))) { throw 'Invalid active runtime data directory' }
+    if ($active.port -lt 1024 -or $active.port -gt 65535) { throw 'Invalid active runtime port' }
+    if (-not $PSBoundParameters.ContainsKey('Port')) { $Port = [int]$active.port }
+    $env:RADAR_DATA_DIR = $runtimePath
+    $env:DATABASE_URL = 'sqlite:///' + (Join-Path $runtimePath 'recruit.db')
+}
 $python = Join-Path $PSScriptRoot '.venv\Scripts\python.exe'
 if (-not (Test-Path -LiteralPath $python)) {
     py -3 -m venv .venv

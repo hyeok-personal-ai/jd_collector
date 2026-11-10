@@ -39,7 +39,8 @@ def market_report(data, filters):
 def experience_report(data):
     blocks = [('title', '내 경험과 공고 연결 리포트'), ('p', data['note']),
               ('p', '분석 시각: ' + datetime.now(ZoneInfo('Asia/Seoul')).isoformat(timespec='seconds')),
-              ('p', '선택 문서: ' + ' · '.join(d['title'] for d in data.get('documents', [])))]
+              ('p', '선택 문서: ' + ' · '.join(d['title'] for d in data.get('documents', []))),
+              ('p', f"조건에 맞는 {data.get('eligible',0)}건 / 의미 비교 {data.get('compared',0)}건 중 상위 {len(data['items'])}건. 색인 대기 {data.get('unindexed',0)}건.")]
     for item in data['items']:
         blocks += [('h2', item['job']['title']), ('link', item['job']['original_url']), ('p', f"의미 유사도: {item['similarity']:.4f}")]
         for pair in item['evidence_pairs']:

@@ -299,7 +299,7 @@ document.querySelector('#closeReport').onclick=()=>document.querySelector('#repo
 document.querySelector('#postingReport').onclick=()=>openReport({kind:'posting',ids:[detailJobId]});
 document.querySelector('#comparisonReport').onclick=()=>openReport({kind:'posting',ids:[...comparisonSelection.keys()]});
 document.querySelector('#marketReport').onclick=()=>openReport({kind:'market',filters:selectedSearchFilters()});
-document.querySelector('#recommendationReport').onclick=()=>{if(lastRecommendationRequest)openReport({kind:'experience',document_ids:lastRecommendationRequest.document_ids,filters:lastRecommendationRequest.filters})};
+document.querySelector('#recommendationReport').onclick=()=>{if(lastRecommendationRequest)openReport({kind:'experience',document_ids:lastRecommendationRequest.document_ids,filters:lastRecommendationRequest.filters,limit:lastRecommendationRequest.limit})};
 
 
 fetch('/api/documents').then(r=>{if(r.status===404){for(const id of ['openExperience','marketReport','postingReport','comparisonReport']){const b=document.querySelector('#'+id);b.disabled=true;b.title='새 서버 코드로 재시작하면 사용할 수 있습니다.';}const notice=el('p','문서 추천·리포트 업데이트가 준비됐습니다. 새 기능을 사용하려면 서버 재시작이 필요합니다.','filter-notice');document.querySelector('.page-heading').after(notice);}}).catch(()=>{});

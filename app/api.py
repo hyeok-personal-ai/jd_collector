@@ -57,7 +57,7 @@ async def lifespan(_app: FastAPI):
             await asyncio.gather(vector_worker, return_exceptions=True)
 
 
-app = FastAPI(title="Recruit Radar", version="2.4.0", lifespan=lifespan)
+app = FastAPI(title="Recruit Radar", version="2.7.0", lifespan=lifespan)
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=['localhost', '127.0.0.1', '[::1]', 'testserver'])
 
 
@@ -765,6 +765,7 @@ class ReportInput(BaseModel):
     format: Literal['md','html','pdf'] = 'html'
     ids: list[int] = Field(default_factory=list,max_length=4)
     document_ids: list[int] = Field(default_factory=list,max_length=20)
+    limit: int = Field(20,ge=1,le=50)
     filters: RecommendationFilters = Field(default_factory=RecommendationFilters)
 
 
@@ -788,7 +789,7 @@ def export_report(body:ReportInput,db:SessionDep):
             blocks=reports.market_report(data,json.dumps(body.filters.model_dump(),ensure_ascii=False))
         else:
             from .experience import recommend
-            data=recommend(db,body.document_ids,body.filters.conditions(db),10)
+            data=recommend(db,body.document_ids,body.filters.conditions(db),body.limit)
             if data['status']!='ready':raise HTTPException(409,'문서 색인이 끝난 뒤 다시 시도하세요.')
             blocks=reports.experience_report(data)
         content={'md':reports.markdown,'html':reports.html_report,'pdf':reports.pdf_report}[body.format](blocks)
