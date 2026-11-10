@@ -54,3 +54,10 @@ The collection network budget is 120 seconds by default, split fairly between so
 The private runtime workflow runs an `audit` job after collection with `needs: collect` and `if: always() && github.event.repository.private == true`. It invokes `python3 scripts/audit_private_run.py` with the built-in repo token and `COLLECT_RESULT` from the collection job. The job needs `contents: write` and `actions: read`; do not enable collection or audits in a public repository.
 
 Audits classify browser challenges, robots restrictions, HTTP access denial, rate limits, workflow failures, and normal time-budget continuation. They reject stale snapshots as evidence of current success. Reports are stored only on the private `state` branch at `audits/<run_id>.json` and `latest-audit.json`. HTTP bodies and credentials are omitted. A failed or cancelled workflow may prevent even its audit job from executing; the workflow status remains the fallback evidence. Scheduled Actions run without the local PC, subject to GitHub scheduling availability.
+
+
+### Daily observation record
+
+The same private audit job maintains `daily-observation.json` on the private `state` branch. It counts actual `schedule` events by the Asia/Seoul calendar date; manual runs do not add days. It records both operationally healthy days and days when both sources were checked. A valid 429 cooldown is an expected operational state, but does not establish a day of collection checks.
+
+Seven-day verification requires seven consecutive scheduled dates for both measures and a latest scheduled run no older than 26 hours. Missing dates, failures, stale results, or a changed workflow policy cannot pass this gate. Updating the workflow starts a new observation period. This record proves only the recorded scheduled attempts and their source results, not complete inventory coverage or the absence of all site restrictions. If GitHub does not execute a schedule or its audit job, no record is fabricated for that date.
