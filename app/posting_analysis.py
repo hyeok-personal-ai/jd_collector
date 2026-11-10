@@ -21,7 +21,7 @@ def structured_analysis(job):
                           'deadline_on':str(job.deadline_on) if job.deadline_on else None,
                           'deadline_text':job.deadline_text,'source_status':job.source_status},
             'missing_sections':[k for k in ('duties','required','preferred','conditions') if not sections[k]],
-            'method':'extractive_sections_v1',
+            'method':'extractive_sections_v2',
             'note':'원문 구역·표현에서 추출했습니다. 미기재는 조건 없음이 아니며, 대안 조건은 원문 전체를 확인하세요.'}
 
 

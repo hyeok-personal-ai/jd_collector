@@ -89,15 +89,16 @@ def requirement_mentions(job, skills):
     from .posting_sections import extract_sections
     evidence = []
     for section, rows in extract_sections(job).items():
-        category=section if section in ('required','preferred') else 'mentioned'
         for row in rows:
+            category=section if section in ('required','preferred') else 'mentioned'
+            if row.get('non_required') and category=='required':category='mentioned'
             line=row['text']
             for skill in skills:
                 match=re.search(skill_pattern(skill),line)
                 if not match:continue
                 snippet=line[max(0,match.start()-70):match.end()+150]
                 item={'skill':skill,'category':category,'evidence':snippet,
-                      'alternative':row['alternative']}
+                      'alternative':row['alternative'],'non_required':row.get('non_required',False)}
                 if item not in evidence:evidence.append(item)
     for skill in skills:
         if re.search(skill_pattern(skill), job.title or '') and not any(e['skill']==skill for e in evidence):

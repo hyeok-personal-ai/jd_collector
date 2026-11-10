@@ -30,6 +30,39 @@ def test_missing_sections_are_unknown_not_empty_requirements():
     assert result['technologies']['mentioned']==['Python']
 
 
+def test_flattened_body_splits_explicit_headings_without_promoting_prose():
+    text=('회사를 소개합니다. 서비스 운영에 필수적인 Python 도구를 만듭니다. '
+          '이런 일을 해요 Redis 서버 운영 이런 분을 찾고 있어요 Java 개발 경험 '
+          '이런 분이라면 더 좋아요! AWS 운영 경험 참고해 주세요 채용 전형 우대 안내')
+    result=structured_analysis(sample(body_text=text))
+    assert result['technologies']['required']==['Java']
+    assert result['technologies']['preferred']==['AWS']
+    assert result['technologies']['mentioned']==['Python','Redis']
+    for rows in result['sections'].values():
+        for row in rows:assert text[row['start']:row['end']]==row['text']
+    ordinary=structured_analysis(sample(body_text='Python 서비스를 만듭니다. '+('제품 설명입니다. '*30)+'채용 전형에서 우대합니다.'))
+    assert ordinary['technologies']['preferred']==[]
+    assert ordinary['technologies']['mentioned']==['Python']
+
+
+def test_short_headings_and_english_plus_boundary():
+    result=structured_analysis(sample(body_text='Key Responsibilities\nAPI 개발\n필수\nPython 개발\n우대\nRedis 운영\nPlus if you have\nKafka 경험\n혜택 및 복지\nDocker 교육'))
+    assert result['technologies']['required']==['Python']
+    assert result['technologies']['preferred']==['Kafka','Redis']
+    assert result['technologies']['mentioned']==['Docker']
+    assert result['sections']['duties'][0]['text']=='API 개발'
+
+
+def test_unrestricted_languages_and_negations_are_not_mandatory_technologies():
+    result=structured_analysis(sample(body_text='자격요건\n언어 및 프레임워크 제약 없음(Spring, FastAPI, Node.js 등)\n최소 하나의 언어 이해(Python, Java 등 언어 무관)\n우대사항\nRedis 경험'))
+    assert result['technologies']['required']==[]
+    assert result['technologies']['mentioned']==['FastAPI','Java','Node.js','Python','Spring']
+    assert result['sections']['required'][1]['alternative']
+    result=structured_analysis(sample(body_text='필수 아님: Python\nRedis is not required\nAWS experience preferred'))
+    assert result['technologies']['required']==[]
+    assert result['technologies']['preferred']==['AWS']
+
+
 def test_comparison_uses_same_requirement_category():
     result=compare_postings([sample(),sample(id=2,body_text='자격요건\nJava 경험\n우대사항\nPython 경험')])
     assert result['common_technologies']['required']==['Java']

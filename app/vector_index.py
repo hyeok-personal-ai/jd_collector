@@ -15,7 +15,8 @@ from .locking import FileLock
 from .posting_analysis import structured_analysis, plain_body
 
 MODEL = 'sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2'
-MODEL_KEY = MODEL + ':sections-token100-overlap20-v2'
+MODEL_KEY = MODEL + ':sections-token100-overlap20-v3'
+REUSABLE_MODEL_KEYS = {MODEL + ':sections-token100-overlap20-v2'}
 DIM = 384
 
 
@@ -60,9 +61,9 @@ def chunks_for(job, tokenizer):
     return chunks
 
 
-def encode_job(job, model, tokenizer):
+def encode_job(job, model, tokenizer, chunks=None):
     import numpy as np
-    chunks=chunks_for(job,tokenizer)
+    chunks=chunks_for(job,tokenizer) if chunks is None else chunks
     vectors=np.asarray(list(model.embed(chunks,batch_size=16)),dtype='<f4')
     norms=np.linalg.norm(vectors,axis=1,keepdims=True)
     vectors=vectors/np.maximum(norms,1e-12)
@@ -86,7 +87,16 @@ def build_batch(model, tokenizer, factory=SessionLocal, limit=16):
         db.expunge_all()
     for job in jobs:
         status('indexing',job_id=job.id,batch_size=len(jobs))
-        row=encode_job(job,model,tokenizer)
+        chunks=chunks_for(job,tokenizer)
+        with factory() as db:
+            previous=db.get(JobEmbedding,job.id)
+            if previous:db.expunge(previous)
+        # Parser-only revisions can retain the exact same model input. Reuse
+        # those vectors; changed chunks still require genuine re-embedding.
+        if (previous and previous.model in REUSABLE_MODEL_KEYS and
+                previous.content_hash==job.content_hash and previous.chunks==chunks):
+            row=previous;row.model=MODEL_KEY;row.updated_at=utcnow()
+        else:row=encode_job(job,model,tokenizer,chunks)
         with factory() as db:
             current=db.get(Job,job.id)
             # A collector may have changed the body while inference was running.

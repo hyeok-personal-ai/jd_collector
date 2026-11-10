@@ -44,3 +44,33 @@ def test_chunking_covers_long_body_and_does_not_truncate_tail():
     assert 'Kafka' in chunks[-1]
     assert len(chunks)>2
     assert all(len(chunk)<=100 for chunk in chunks[1:])
+
+
+def test_parser_revision_reuses_only_identical_model_input(client):
+    pytest.importorskip('numpy')
+    from sqlalchemy.orm import sessionmaker
+    from app.vector_index import build_batch,REUSABLE_MODEL_KEYS
+    class Tokenizer:
+        def encode(self,text,add_special_tokens):
+            return SimpleNamespace(offsets=[(i,i+1) for i in range(len(text))])
+    class Model:
+        calls=0
+        def embed(self,chunks,batch_size):
+            self.calls+=1
+            return [[1.]+[0.]*(DIM-1) for _ in chunks]
+    session=api.app.dependency_overrides[get_session]();db=next(session)
+    try:
+        factory=sessionmaker(db.get_bind(),expire_on_commit=False)
+        model=Model()
+        assert build_batch(model,Tokenizer(),factory)==4
+        for row in db.scalars(select(JobEmbedding)):
+            row.model=next(iter(REUSABLE_MODEL_KEYS))
+        changed=db.scalar(select(JobEmbedding).order_by(JobEmbedding.job_id))
+        changed.chunks=['Obsolete parser input']
+        db.commit();model.calls=0
+        assert build_batch(model,Tokenizer(),factory)==4
+        assert model.calls==1
+        db.expire_all()
+        assert index_status(db)['pending']==0
+        assert build_batch(model,Tokenizer(),factory)==0
+    finally:session.close()
