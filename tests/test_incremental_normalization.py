@@ -26,7 +26,9 @@ class CountingDemo(DemoCrawler):
         return await super().parse(fetcher, ref)
 
 
-def test_no_repeated_detail_fetch_and_revision_refresh(tmp_path: Path):
+def test_no_repeated_detail_fetch_and_revision_refresh(tmp_path: Path, monkeypatch):
+    # Keep this revision test independent of the demo fixture deadline passing.
+    monkeypatch.setattr("app.deadline_policy.today_kst", lambda: date(2026, 1, 1))
     engine = create_engine(f"sqlite:///{tmp_path / 'incremental.db'}")
     Base.metadata.create_all(engine)
     factory = sessionmaker(bind=engine, expire_on_commit=False)

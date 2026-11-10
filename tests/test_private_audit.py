@@ -29,3 +29,11 @@ def test_budget_continuation_is_healthy_but_missing_source_is_not():
     assert audit.report_for(run,doc,'success')['healthy']
     del doc['source_status']['zighang']
     assert not audit.report_for(run,doc,'success')['healthy']
+
+
+
+def test_valid_rate_limit_pause_is_not_hidden_failure():
+    valid={'status':'cooldown','http_status':429,'resume_after':'2099-01-01T00:00:00+00:00'}
+    assert audit.assessment(valid)['reason']=='rate_limit_cooldown'
+    assert audit.assessment({**valid,'resume_after':'2020-01-01T00:00:00+00:00'})['status']=='invalid_cooldown'
+    assert audit.assessment({**valid,'http_status':403})['status']=='invalid_cooldown'

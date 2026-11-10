@@ -31,7 +31,13 @@ def assessment(source):
         responses.append({'path':path,'status':row.get('status'),
                           'pagination':{k:v for k,v in (row.get('pagination') or {}).items() if k in ('page','per_page') and type(v) is int},
                           'browser_challenge':row.get('browser_challenge') is True})
-    if status=='completed':reason='completed'
+    resume=source.get('resume_after')
+    valid_cooldown=False
+    try:valid_cooldown=(status=='cooldown' and source.get('http_status')==429 and datetime.fromisoformat(resume).timestamp()>datetime.now(timezone.utc).timestamp())
+    except (ValueError,TypeError):pass
+    if status=='cooldown' and not valid_cooldown:status='invalid_cooldown'
+    if valid_cooldown:reason='rate_limit_cooldown'
+    elif status=='completed':reason='completed'
     elif status=='limited':reason='budget_resume'  # Expected continuation, not a failed run.
     elif failure.get('kind')=='browser_challenge' or any(r['browser_challenge'] for r in responses):reason='site_browser_challenge'
     elif failure.get('kind')=='robots_disallow':reason='robots_disallow'
@@ -39,7 +45,8 @@ def assessment(source):
     elif failure.get('http_status') in (401,403):reason='access_denied_rule_unknown'
     else:reason='insufficient_evidence'
     return {'status':status,'reason':reason,'http_status':failure.get('http_status'),
-            'stage':failure.get('stage'),'responses':responses}
+            'stage':failure.get('stage'),'responses':responses,
+            'resume_after':resume if valid_cooldown else None}
 
 
 def report_for(run,doc,collect_result):
@@ -47,7 +54,7 @@ def report_for(run,doc,collect_result):
     started=datetime.fromisoformat(run['created_at'].replace('Z','+00:00'))
     fresh=bool(generated and generated.tzinfo and generated>=started)
     sources={s:assessment((doc.get('source_status') or {}).get(s,{})) for s in ('inthiswork','zighang')} if fresh else {}
-    healthy=collect_result=='success' and fresh and all(s['status'] in ('completed','limited') for s in sources.values())
+    healthy=collect_result=='success' and fresh and all(s['status'] in ('completed','limited','cooldown') for s in sources.values())
     return {'version':1,'run_id':str(run['id']),'checked_at':datetime.now(timezone.utc).isoformat(),
             'collect_result':collect_result,'snapshot_fresh':fresh,'healthy':healthy,
             'reason':'source_results' if fresh else 'no_fresh_snapshot_or_collection_failed',

@@ -144,7 +144,7 @@ def export_snapshot(factory=SessionLocal, store=None, statuses=None, *, include_
             if row['source'] == 'inthiswork' and row['recheck_mode'] == 'ignored':
                 row['payload'] = None  # Preserve scan position without retaining non-development bodies.
         pages = [dict(r) for r in db.execute("SELECT * FROM aggregate_pages WHERE source IN ('zighang_company','inthiswork','zighang_recent')")]
-        meta = [dict(r) for r in db.execute("SELECT * FROM aggregate_meta WHERE source IN ('inthiswork','zighang_recent')")]
+        meta = [dict(r) for r in db.execute("SELECT * FROM aggregate_meta WHERE source IN ('inthiswork','zighang_recent') OR (source='zighang' AND key='rate_limit_cooldown')")]
     return {'version': 1, 'generated_at': utcnow().isoformat(), 'jobs': jobs,
             'inventory': {'aggregate_refs': refs, 'aggregate_focus': focus, 'aggregate_pages': pages, 'aggregate_meta': meta},
             'source_status': statuses or {}}
@@ -298,6 +298,7 @@ async def collect_cloud(repo, budget=600):
     from .crawlers.zighang_recent import pending_recent, recent_summary
     from .source_diagnostics import response_evidence, failure_evidence
     from .fetcher import PoliteFetcher, browser_challenge
+    from .rate_limit import stop_on_rate_limit, waiting_status, KEY as COOLDOWN_KEY
     evidence = []
     def diagnostic_fetcher(hosts):
         fetcher = PoliteFetcher(hosts)
@@ -306,6 +307,11 @@ async def collect_cloud(repo, budget=600):
             if response.status_code >= 400 or browser_challenge(response):
                 evidence.append(response_evidence(response))
                 del evidence[:-3]
+            await stop_on_rate_limit(response, store, source)
+        async def before_request(request):
+            if waiting_status(store, source):
+                raise RuntimeError('HTTP 429: source cooldown active; no request sent')
+        fetcher.client.event_hooks['request'] = [before_request]
         fetcher.client.event_hooks['response'] = [observe]
         return fetcher
     statuses = {}
@@ -314,6 +320,10 @@ async def collect_cloud(repo, budget=600):
         known_wp = list(db.scalars(select(Job.external_id).where(Job.source_id == 'inthiswork')))
     for source, cls, limit in [('inthiswork', DevelopmentInThisWorkCrawler, 5000), ('zighang', ZighangPublicCrawler, 100)]:
         evidence.clear()
+        waiting = waiting_status(store, source)
+        if waiting:
+            statuses[source] = waiting
+            continue
         try:
             while time.monotonic() < deadline:
                 allowance = min(180, deadline - time.monotonic()) if source == 'inthiswork' else deadline - time.monotonic()
@@ -329,7 +339,12 @@ async def collect_cloud(repo, budget=600):
                     statuses[source]['reason'] = 'source_access_or_parse_failure'
                     statuses[source]['failure'] = failure_evidence(run.error_summary or '')
                     statuses[source]['responses'] = list(evidence)
+                    waiting = waiting_status(store, source)
+                    if waiting:
+                        statuses[source].update(waiting)
                     break
+                if run.status == 'completed':
+                    store.meta(source, COOLDOWN_KEY, {'until':0,'strikes':0})
                 if source != 'zighang' or not (pending_recent(store, 1) or store.due_discovery_pages(COMPANY_SOURCE, 1) or store.due('zighang', 1, focus='development')):
                     break
         except TimeoutError:
