@@ -73,6 +73,8 @@ async def discover_recent(fetcher, store, limit=10):
 def recent_summary(store):
     with store.db() as db:
         counts = {r[0]:r[1] for r in db.execute('SELECT state,count(*) FROM aggregate_refs WHERE source=? GROUP BY state', (RECENT_SOURCE,))}
-    return {'inventory':counts, 'eligible_pending':len(pending_recent(store, 100000)),
+        eligible = db.execute("SELECT count(*) FROM aggregate_refs WHERE source=? AND (state='pending' OR (state='failed' AND checked<?))",
+                              (RECENT_SOURCE, time.time()-86400)).fetchone()[0]
+    return {'inventory':counts, 'eligible_pending':eligible,
             'last_scan':store.meta(RECENT_SOURCE, 'last_scan'), 'window_days':7,
             'max_sitemap_pages':3, 'remaining_development':None}

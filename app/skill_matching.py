@@ -86,32 +86,19 @@ SECTION = re.compile(r"(?i)(자격\s*요건|필수\s*(?:요건|사항|조건)|�
 
 def requirement_mentions(job, skills):
     """Conservative section-based evidence; a mention is not eligibility proof."""
-    from bs4 import BeautifulSoup
-    raw = job.body_text or ''
-    if re.search(r'<(?:p|div|li|br|h[1-6])\b', raw, re.I):
-        raw = BeautifulSoup(raw, 'html.parser').get_text('\n')
-    parts = SECTION.split(raw)
-    category = 'mentioned'
+    from .posting_sections import extract_sections
     evidence = []
-    for part in parts:
-        if SECTION.fullmatch(part):
-            lower = part.lower()
-            category = ('preferred' if re.search(r'우대|preferred|nice to have', lower)
-                        else 'required' if re.search(r'자격|필수|requirements', lower) else 'mentioned')
-            continue
-        for line in re.split(r'[\n\r]+', part):
-            line = line.strip()
-            if not line: continue
+    for section, rows in extract_sections(job).items():
+        category=section if section in ('required','preferred') else 'mentioned'
+        for row in rows:
+            line=row['text']
             for skill in skills:
-                match = re.search(skill_pattern(skill), line)
-                if not match: continue
-                kind = category
-                # Explicit sentence-level preference overrides the surrounding section.
-                if re.search(r'우대|preferred|nice to have', line, re.I): kind = 'preferred'
-                elif re.search(r'필수|must have|required', line, re.I): kind = 'required'
-                snippet = line[max(0, match.start()-70):match.end()+150]
-                item = {'skill': skill, 'category': kind, 'evidence': snippet}
-                if item not in evidence: evidence.append(item)
+                match=re.search(skill_pattern(skill),line)
+                if not match:continue
+                snippet=line[max(0,match.start()-70):match.end()+150]
+                item={'skill':skill,'category':category,'evidence':snippet,
+                      'alternative':row['alternative']}
+                if item not in evidence:evidence.append(item)
     for skill in skills:
         if re.search(skill_pattern(skill), job.title or '') and not any(e['skill']==skill for e in evidence):
             evidence.append({'skill':skill, 'category':'mentioned', 'evidence':job.title})

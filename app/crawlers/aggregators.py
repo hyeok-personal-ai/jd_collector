@@ -216,8 +216,16 @@ class ZighangPublicCrawler(BaseCrawler):
             from .zighang_public import COMPANY_SOURCE,public_rows,company_candidates,company_urls
             s.meta(source,'scope','공개 기업 목록·관련 공고·최근 7일 공식 사이트맵 최대 3개에서 개발 공고 발견; 전체 확보 아님')
             from .zighang_recent import discover_recent
-            await discover_recent(fetcher,s)
-            for url in s.due_discovery_pages(COMPANY_SOURCE,5):
+            # Commit previously discovered payloads before spending the short
+            # daily budget on new pages. Rotate old checks, not fixed row IDs.
+            due=s.due(source,10000,focus='development')
+            emitted=set()
+            pending=[row for row in due if row['state']=='pending'][:10]
+            reviews=[row for row in due if row['state']!='pending'][:3]
+            for row in pending+reviews:
+                emitted.add(row['id'])
+                yield JobRef(row['id'],row['url'],listing_fingerprint=row['revision'],payload=row['payload'])
+            for url in s.due_discovery_pages(COMPANY_SOURCE,2):
                 try:
                     html=await fetcher.get_text(url)
                     rows=public_rows(html)
@@ -225,13 +233,22 @@ class ZighangPublicCrawler(BaseCrawler):
                     s.add_focus(source,candidates,provenance='public_company_page')
                     s.pages(COMPANY_SOURCE,company_urls(rows))
                     s.mark_discovery_page(COMPANY_SOURCE,url,count=len(candidates))
+                    # A company page often carries full public bodies. Save them
+                    # immediately; a later timeout must not discard the work.
+                    for row in candidates:
+                        if row['id'] in emitted:continue
+                        emitted.add(row['id'])
+                        yield JobRef(row['id'],row['url'],listing_fingerprint=row.get('revision'),payload=row.get('payload'))
                 except PermissionError:
                     s.mark_discovery_page(COMPANY_SOURCE,url,state='failed',error='Access policy/security challenge; no bypass')
                     raise
                 except Exception as exc:
                     s.mark_discovery_page(COMPANY_SOURCE,url,state='failed',error=str(exc))
                     if any(code in str(exc) for code in ('HTTP 401','HTTP 403','HTTP 429')):raise
+            await discover_recent(fetcher,s,limit=5)
             for row in s.due(source,10000,focus='development'):
+                if row['id'] in emitted:continue
+                emitted.add(row['id'])
                 yield JobRef(row['id'],row['url'],listing_fingerprint=row['revision'],payload=row['payload'])
             return
         s.meta(source,'scope','공식 사이트맵의 공개 공고; 신규 주소 탐색과 저장 공고 마감 재확인')

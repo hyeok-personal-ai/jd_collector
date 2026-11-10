@@ -121,13 +121,13 @@ class AggregateStore:
                     WHERE f.source=? AND f.focus=? AND r.source=f.source AND r.id=f.id AND
                     (r.state='pending' OR (r.state='done' AND r.active=1 AND r.recheck_mode NOT IN ('fixed','closed') AND r.checked<?)
                      OR (r.state IN ('failed','unavailable') AND r.recheck_mode NOT IN ('fixed','closed') AND r.checked<?))
-                    ORDER BY CASE WHEN r.state='done' THEN 0 ELSE 1 END,r.rowid LIMIT ?''',
+                    ORDER BY CASE WHEN r.state='done' THEN 0 ELSE 1 END,r.checked,r.rowid LIMIT ?''',
                     (source,focus,time.time()-21600,time.time()-86400,limit)).fetchall()
             else:
                 rows=db.execute('''SELECT * FROM aggregate_refs WHERE source=? AND
                     (state='pending' OR (state='done' AND active=1 AND recheck_mode NOT IN ('fixed','closed') AND checked<?)
                      OR (state IN ('failed','unavailable') AND recheck_mode NOT IN ('fixed','closed') AND checked<?))
-                    ORDER BY CASE WHEN state='done' THEN 0 ELSE 1 END,rowid LIMIT ?''',
+                    ORDER BY CASE WHEN state='done' THEN 0 ELSE 1 END,checked,rowid LIMIT ?''',
                     (source,time.time()-21600,time.time()-86400,limit)).fetchall()
             return [{**dict(r),'payload':json.loads(r['payload']) if r['payload'] else None} for r in rows]
 

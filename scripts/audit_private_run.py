@@ -44,7 +44,7 @@ def assessment(source):
     elif failure.get('http_status')==429:reason='rate_limited'
     elif failure.get('http_status') in (401,403):reason='access_denied_rule_unknown'
     else:reason='insufficient_evidence'
-    return {'status':status,'reason':reason,'http_status':failure.get('http_status'),
+    return {'status':status,'reason':reason,'http_status':source.get('http_status') or failure.get('http_status'),
             'stage':failure.get('stage'),'responses':responses,
             'resume_after':resume if valid_cooldown else None}
 

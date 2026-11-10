@@ -28,6 +28,38 @@ def page(row):
     return '<script>self.__next_f.push('+json.dumps([1,stream],ensure_ascii=False)+')</script>'
 
 
+def test_short_run_yields_saved_pending_before_new_discovery(tmp_path):
+    store=AggregateStore(tmp_path/'inventory.sqlite')
+    store.meta('zighang','collection_mode','development')
+    store.add_focus('zighang',company_candidates({ID:posting()},COMPANY))
+    class Fetcher:
+        async def get_text(self,*args,**kwargs):
+            pytest.fail('Pending payload must be yielded before spending time discovering new pages')
+    async def check():
+        iterator=ZighangPublicCrawler(store).discover(Fetcher())
+        ref=await anext(iterator)
+        assert ref.external_id==ID and ref.payload['public_row']['status']=='ACTIVE'
+        await iterator.aclose()
+    asyncio.run(check())
+
+
+def test_known_posting_still_updates_after_role_changes():
+    row=posting(title='영업 담당자',depthOnes=['영업'],status='CLOSED')
+    assert company_candidates({ID:row},COMPANY)==[]
+    assert company_candidates({ID:row},COMPANY,known=[ID])[0]['payload']['public_row']['status']=='CLOSED'
+
+
+def test_due_reviews_rotate_by_oldest_check_not_row_id(tmp_path):
+    store=AggregateStore(tmp_path/'inventory.sqlite')
+    for identifier in ('first','second'):
+        store.add_focus('zighang',[{'id':identifier,'url':'https://example.org/'+identifier}])
+        store.mark('zighang',identifier,'done',active=True,recheck_mode='unknown')
+    with store.db() as db:
+        db.execute("UPDATE aggregate_refs SET checked=? WHERE id='first'",(time.time()-90000,))
+        db.execute("UPDATE aggregate_refs SET checked=? WHERE id='second'",(time.time()-180000,))
+    assert store.due('zighang',1,focus='development')[0]['id']=='second'
+
+
 @pytest.mark.parametrize('status',[200,403])
 def test_wordpress_challenge_stops_before_any_content_request(status):
     requests=[]

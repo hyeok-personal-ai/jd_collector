@@ -8,8 +8,13 @@ $python = Join-Path $PSScriptRoot '.venv\Scripts\python.exe'
 if (-not (Test-Path -LiteralPath $python)) {
     py -3 -m venv .venv
     if ($LASTEXITCODE -ne 0) { throw 'Python 3.11 이상이 필요합니다.' }
-    & $python -m pip install -e '.[dev]'
+    & $python -m pip install -e '.[dev,analysis]'
     if ($LASTEXITCODE -ne 0) { throw '패키지 설치 실패' }
+}
+& $python -c "import fastembed" 2>$null
+if ($LASTEXITCODE -ne 0) {
+    & $python -m pip install -e '.[analysis]'
+    if ($LASTEXITCODE -ne 0) { throw '유사도 분석 패키지 설치 실패' }
 }
 if (-not $NoBrowser) { Start-Process "http://127.0.0.1:$Port" }
 & $python -X utf8 -m app.launcher --port $Port

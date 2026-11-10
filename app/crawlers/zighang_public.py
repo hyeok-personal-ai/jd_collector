@@ -153,7 +153,7 @@ def company_candidates(rows,source_page,known=()):
     """Only current candidates, plus explicit status updates for previously checked refs."""
     selected=[]
     for identifier,row in rows.items():
-        if not development_row(row):continue
+        if not development_row(row) and identifier not in known:continue
         candidate=development_candidates({identifier:row})
         if not candidate and identifier not in known:continue
         item={'id':identifier,'url':'https://www.zighang.com/recruitment/'+identifier,'title':row['title']}

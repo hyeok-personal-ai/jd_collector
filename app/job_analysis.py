@@ -6,7 +6,9 @@ def summarize_jobs(jobs, selected, total):
     names=list(dict.fromkeys([*CATALOG,*selected]))
     rows={name:{'skill':name,'selected':name in selected,'required':0,'preferred':0,
                 'mentioned':0,'posting_count':0,'examples':[]} for name in names}
+    analyzed=0
     for job in jobs:
+        analyzed+=1
         result=requirement_mentions(job,names)
         for name,row in rows.items():
             kinds=[k for k in ('required','preferred','mentioned') if name in result[k]]
@@ -21,8 +23,8 @@ def summarize_jobs(jobs, selected, total):
                   key=lambda r:(-r['required'],-r['preferred'],-r['posting_count'],r['skill']))
     focus=[r['skill'] for r in ranked if r['selected']][:5]
     investigate=[r['skill'] for r in ranked if not r['selected'] and r['required']][:5]
-    return {'total':total,'analyzed':len(jobs),'sampled':total>len(jobs),'limit':300,
-        'scope':'현재 검색 조건의 최신 등록일순 최대 300건. 출처 간 중복 공고가 포함될 수 있습니다.',
+    return {'total':total,'analyzed':analyzed,'sampled':total>analyzed,'limit':None,
+        'scope':'현재 검색 조건의 전체 공고. 출처 간 중복 공고가 포함될 수 있습니다.',
         'technologies':ranked,'resume_focus':focus,'investigate':investigate,
         'guidance':[
             {'title':'이력서: 기술 목록보다 실제 해결 경험',

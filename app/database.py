@@ -50,6 +50,18 @@ class JobSkillIndex(Base):
     terms: Mapped[str] = mapped_column(Text)
 
 
+class JobEmbedding(Base):
+    """Derived local vectors; never included in cloud posting snapshots."""
+    __tablename__ = 'job_embeddings'
+    job_id: Mapped[int] = mapped_column(primary_key=True)
+    content_hash: Mapped[str] = mapped_column(String(64))
+    model: Mapped[str] = mapped_column(String(200))
+    vector: Mapped[bytes] = mapped_column(LargeBinary)
+    chunks: Mapped[list] = mapped_column(JSON)
+    chunk_vectors: Mapped[bytes] = mapped_column(LargeBinary)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
 class RawPosting(Base):
     """Save parsed source payload separately so model upgrades need no re-crawl."""
     __tablename__ = "raw_postings"

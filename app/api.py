@@ -33,11 +33,14 @@ async def lifespan(_app: FastAPI):
     init_db()  # For MVP; replace with Alembic migrations later.
     worker = None
     cloud_worker = None
+    vector_worker = None
     if os.getenv('RADAR_WORKER') == '1':
         from .service import serve_queue
         worker = asyncio.create_task(serve_queue())
         from .cloud import sync_loop
         cloud_worker = asyncio.create_task(sync_loop())
+        from .vector_index import supervise
+        vector_worker = asyncio.create_task(supervise())
     try:
         yield
     finally:
@@ -47,6 +50,9 @@ async def lifespan(_app: FastAPI):
         if cloud_worker:
             cloud_worker.cancel()
             await asyncio.gather(cloud_worker, return_exceptions=True)
+        if vector_worker:
+            vector_worker.cancel()
+            await asyncio.gather(vector_worker, return_exceptions=True)
 
 
 app = FastAPI(title="Recruit Radar", version="2.4.0", lifespan=lifespan)
@@ -61,6 +67,9 @@ async def local_write_guard(request: Request, call_next):
             return Response('Same-origin local application request required', status_code=403)
     return await call_next(request)
 SessionDep = Annotated[Session, Depends(get_session)]
+ApplicationStatus = Literal['none','planned','applied','interview','offer','rejected','withdrawn']
+RoleFilter = Literal['','backend_infra','backend','server','infra']
+EmploymentFilter = Literal['','full_time','contract','intern','part_time','unknown']
 
 
 @app.get("/", include_in_schema=False)
@@ -90,7 +99,7 @@ def aggregate_status(session: SessionDep):
         item['saved'] = counts.get(source, {'open': 0, 'closed': 0, 'unknown': 0})
         item['saved']['total'] = sum(item['saved'].values())
         # Sitemap URLs include historical postings; their count cannot be an open total.
-        item['coverage_fresh'] = bool(item['last_scan'] and now.timestamp()-item['last_scan']<=21600)
+        item['coverage_fresh'] = bool(item['last_scan'] and now.timestamp()-item['last_scan']<=93600)
         item['remaining_open'] = 0 if source == 'inthiswork' and (item['complete'] or item['current_list_complete']) and item['coverage_fresh'] else None
         latest=session.scalar(select(CrawlRun).where(CrawlRun.source_id==source).order_by(CrawlRun.id.desc()))
         checked=(latest.finished_at or latest.started_at) if latest else None
@@ -166,8 +175,22 @@ def status_summary(db: SessionDep):
 
 def job_conditions(*, keyword=None, source_id=None, recruitment_type=None, region=None,
                    open_only=False, it_only=False, entry_only=False, include_unknown_entry=False,
-                   bookmarked_only=False, korea_only=False, skills=None, skill_mode="any", role=""):
+                   bookmarked_only=False, korea_only=False, skills=None, skill_mode="any", role="",
+                   employment_type='', application_status=''):
     conditions = []
+    if application_status:
+        records = ControlStore().applications()
+        if application_status == 'none':
+            conditions.append(Job.id.not_in([k for k,v in records.items() if v['status'] != 'none']))
+        else:
+            conditions.append(Job.id.in_([k for k,v in records.items() if v['status'] == application_status]))
+    if employment_type == 'unknown':
+        conditions.append(or_(Job.employment_type.is_(None), Job.employment_type == '',
+                              Job.employment_type.in_(['unknown','미확인','미정'])))
+    elif employment_type:
+        patterns={'full_time':r'(?i)정규|full.?time|permanent', 'contract':r'(?i)계약|contract|freelance|프리랜서',
+                  'intern':r'(?i)인턴|intern', 'part_time':r'(?i)파트|시간제|아르바이트|part.?time'}
+        conditions.append(Job.employment_type.regexp_match(patterns[employment_type]))
     if bookmarked_only:
         conditions.append(Job.id.in_(ControlStore().bookmarks()))
     if korea_only:
@@ -204,6 +227,10 @@ def job_conditions(*, keyword=None, source_id=None, recruitment_type=None, regio
         conditions.append(score >= (len(skills) if skill_mode=="all" else 1))
     if role=="backend_infra":
         conditions.append(Job.title.regexp_match(BACKEND_TITLE))
+    elif role:
+        patterns={'backend':r'(?i)백엔드|back.?end', 'server':r'(?i)서버|server',
+                  'infra':r'(?i)인프라|infra|devops|sre|클라우드|cloud|플랫폼|platform|시스템|system'}
+        conditions.append(Job.title.regexp_match(patterns[role]))
     return conditions
 
 
@@ -213,6 +240,8 @@ def search_jobs(
     keyword: str | None = Query(None, max_length=150),
     source_id: str | None = None,
     recruitment_type: str | None = None,
+    employment_type: EmploymentFilter = '',
+    application_status: ApplicationStatus | Literal[''] = '',
     region: str | None = None,
     open_only: bool = False,
     it_only: bool = False,
@@ -222,7 +251,7 @@ def search_jobs(
     korea_only: bool = False,
     skills: str = Query("",max_length=1200),
     skill_mode: Literal["any","all"] = "any",
-    role: Literal["","backend_infra"] = "",
+    role: RoleFilter = "",
     sort: Literal["newest", "deadline", "match"] = "newest",
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
@@ -233,7 +262,8 @@ def search_jobs(
     conditions = job_conditions(keyword=keyword, source_id=source_id, recruitment_type=recruitment_type,
         region=region, open_only=open_only, it_only=it_only, entry_only=entry_only,
         include_unknown_entry=include_unknown_entry, bookmarked_only=bookmarked_only, korea_only=korea_only,
-        skills=selected_skills,skill_mode=skill_mode,role=role)
+        skills=selected_skills,skill_mode=skill_mode,role=role,
+        employment_type=employment_type,application_status=application_status)
     statement = select(Job).where(*conditions)
     total = db.scalar(select(func.count()).select_from(Job).where(*conditions)) or 0
     if sort == "match" and selected_skills:
@@ -249,9 +279,11 @@ def search_jobs(
     by_key = {(v.source_id,v.external_id):v for v in labels}
     items = []
     saved_ids = set(ControlStore().bookmarks())
+    applications = ControlStore().applications()
     for job in jobs:
         d = JobOut.model_validate(job).model_dump(mode='json')
         d['bookmarked'] = job.id in saved_ids
+        d['application'] = applications.get(job.id, {'status':'none','note':''})
         d['skill_match'] = match_details(job,selected_skills) if selected_skills else None
         label = by_key.get((job.source_id,job.external_id))
         d['classification'] = ({'it_match':label.it_match, 'career':label.career,
@@ -419,11 +451,12 @@ def bookmark(job_id: int, body: ToggleRequest, db: SessionDep):
 def export_jobs(db: SessionDep, bookmarked_only: bool = False,
                 keyword: str | None = Query(None,max_length=150), source_id: str | None = None,
                 recruitment_type: str | None = None, region: str | None = None,
+                employment_type: EmploymentFilter = '', application_status: ApplicationStatus | Literal[''] = '',
                 open_only: bool = False, it_only: bool = False, entry_only: bool = False,
                 include_unknown_entry: bool = False, korea_only: bool = False,
                 sort: Literal['newest','deadline','match'] = 'newest',
                 skills: str = Query('',max_length=1200), skill_mode: Literal['any','all']='any',
-                role: Literal['','backend_infra']=''):
+                role: RoleFilter=''):
     import csv
     import io
     try:selected_skills=normalize_skills(skills)
@@ -432,7 +465,8 @@ def export_jobs(db: SessionDep, bookmarked_only: bool = False,
     conditions=job_conditions(keyword=keyword,source_id=source_id,recruitment_type=recruitment_type,
         region=region,open_only=open_only,it_only=it_only,entry_only=entry_only,
         include_unknown_entry=include_unknown_entry,bookmarked_only=bookmarked_only,korea_only=korea_only,
-        skills=selected_skills,skill_mode=skill_mode,role=role)
+        skills=selected_skills,skill_mode=skill_mode,role=role,
+        employment_type=employment_type,application_status=application_status)
     statement=select(Job).where(*conditions)
     statement=statement.order_by(Job.deadline_on.is_(None),Job.deadline_on.asc(),Job.id.desc()) if sort=='deadline' else statement.order_by(Job.posted_on.desc(),Job.id.desc())
     if sort=='match' and selected_skills:statement=statement.order_by(None).order_by(score_expression(selected_skills).desc(),Job.posted_on.desc(),Job.id.desc())
@@ -475,7 +509,7 @@ def backup():
 
 class SkillProfile(BaseModel):
     skills: list[str] = Field(default_factory=list,max_length=30)
-    role: Literal['','backend_infra'] = ''
+    role: RoleFilter = ''
 
 
 @app.get('/api/skill-profile')
@@ -506,10 +540,11 @@ def skill_catalog():
 @app.get('/api/job-analysis')
 def analyze_jobs(db: SessionDep, keyword: str | None=None, source_id: str | None=None,
                  recruitment_type: str | None=None, region: str | None=None,
+                 employment_type: EmploymentFilter='', application_status: ApplicationStatus | Literal['']='',
                  open_only: bool=True, it_only: bool=False, entry_only: bool=False,
                  include_unknown_entry: bool=False, bookmarked_only: bool=False,
                  korea_only: bool=False, skills: str=Query('',max_length=1200),
-                 skill_mode: Literal['any','all']='any', role: Literal['','backend_infra']=''):
+                 skill_mode: Literal['any','all']='any', role: RoleFilter=''):
     from .job_analysis import summarize_jobs
     try: selected=normalize_skills(skills)
     except ValueError as exc: raise HTTPException(422,str(exc))
@@ -517,7 +552,108 @@ def analyze_jobs(db: SessionDep, keyword: str | None=None, source_id: str | None
     conditions=job_conditions(keyword=keyword,source_id=source_id,recruitment_type=recruitment_type,
         region=region,open_only=open_only,it_only=it_only,entry_only=entry_only,
         include_unknown_entry=include_unknown_entry,bookmarked_only=bookmarked_only,
-        korea_only=korea_only,skills=selected,skill_mode=skill_mode,role=role)
+        korea_only=korea_only,skills=selected,skill_mode=skill_mode,role=role,
+        employment_type=employment_type,application_status=application_status)
     total=db.scalar(select(func.count()).select_from(Job).where(*conditions)) or 0
-    jobs=db.scalars(select(Job).where(*conditions).order_by(Job.posted_on.desc(),Job.id.desc()).limit(300)).all()
+    jobs=db.scalars(select(Job).where(*conditions).order_by(Job.posted_on.desc(),Job.id.desc()).execution_options(yield_per=300))
     return summarize_jobs(jobs,selected,total)
+
+
+class ApplicationUpdate(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    status: ApplicationStatus = 'none'
+    note: str = Field('', max_length=5000)
+
+
+@app.get('/api/jobs/{job_id}/application')
+def read_application(job_id: int, db: SessionDep):
+    if db.get(Job, job_id) is None:
+        raise HTTPException(404, 'Posting not found')
+    return ControlStore().applications().get(job_id, {'job_id':job_id, 'status':'none','note':''})
+
+
+@app.put('/api/jobs/{job_id}/application')
+def update_application(job_id: int, body: ApplicationUpdate, db: SessionDep):
+    if db.get(Job, job_id) is None:
+        raise HTTPException(404, 'Posting not found')
+    return ControlStore().save_application(job_id, body.status, body.note)
+
+
+@app.get('/api/jobs/{job_id}/analysis')
+def analyze_posting(job_id: int, db: SessionDep):
+    from .posting_analysis import structured_analysis
+    job=db.get(Job,job_id)
+    if job is None:raise HTTPException(404,'Posting not found')
+    return structured_analysis(job)
+
+
+@app.get('/api/compare')
+def compare_jobs(db: SessionDep, ids: str=Query(...,max_length=100)):
+    from .posting_analysis import compare_postings
+    try: selected=list(dict.fromkeys(int(v) for v in ids.split(',')))
+    except ValueError:raise HTTPException(422,'Expected comma-separated posting IDs')
+    if not 2<=len(selected)<=4:raise HTTPException(422,'Select two to four postings')
+    jobs=[db.get(Job,i) for i in selected]
+    if any(j is None for j in jobs):raise HTTPException(404,'Posting not found')
+    return compare_postings(jobs)
+
+
+@app.get('/api/vector-status')
+def vector_status(db: SessionDep):
+    from .vector_index import index_status
+    return index_status(db)
+
+
+@app.get('/api/jobs/{job_id}/similar')
+def similar_postings(job_id: int, db: SessionDep, open_only: bool=True,
+                     entry_only: bool=False, role: RoleFilter='', region: str | None=None,
+                     employment_type: EmploymentFilter='', limit: int=Query(10,ge=1,le=30)):
+    from .vector_index import nearest
+    job=db.get(Job,job_id)
+    if job is None:raise HTTPException(404,'Posting not found')
+    try:
+        return nearest(db,job,job_conditions(open_only=open_only,entry_only=entry_only,
+                       role=role,region=region,employment_type=employment_type),limit)
+    except ImportError:raise HTTPException(503,'Local analysis dependencies are not installed')
+
+
+@app.get('/api/jobs/{job_id}/duplicates')
+def review_candidates(job_id: int, db: SessionDep):
+    from .duplicate_review import candidates
+    job=db.get(Job,job_id)
+    if job is None:raise HTTPException(404,'Posting not found')
+    return candidates(db,job)
+
+
+class DuplicateGroupRequest(BaseModel):
+    ids: list[int] = Field(min_length=2,max_length=20)
+
+
+@app.get('/api/reviewed-duplicates')
+def reviewed_duplicates(db: SessionDep):
+    groups,_=ControlStore().duplicate_reviews()
+    return {'groups':[{'id':key,'items':[JobOut.model_validate(job).model_dump(mode='json')
+        for i in members if (job:=db.get(Job,i)) is not None]} for key,members in groups.items()]}
+
+
+@app.post('/api/reviewed-duplicates')
+def confirm_duplicate_group(body: DuplicateGroupRequest, db: SessionDep):
+    ids=list(dict.fromkeys(body.ids))
+    if len(ids)<2:raise HTTPException(422,'Select distinct postings')
+    if any(db.get(Job,i) is None for i in ids):raise HTTPException(404,'Posting not found')
+    return {'id':ControlStore().group_duplicates(ids)}
+
+
+@app.delete('/api/reviewed-duplicates/{group_id}')
+def split_duplicate_group(group_id: str):
+    try:ControlStore().split_duplicates(group_id)
+    except KeyError:raise HTTPException(404,'Group not found')
+    return {'split':True}
+
+
+@app.put('/api/jobs/{job_id}/not-duplicate/{other_id}')
+def reject_duplicate_pair(job_id: int, other_id: int, db: SessionDep):
+    if job_id==other_id:raise HTTPException(422,'Select distinct postings')
+    if db.get(Job,job_id) is None or db.get(Job,other_id) is None:raise HTTPException(404,'Posting not found')
+    ControlStore().reject_duplicate(job_id,other_id)
+    return {'rejected':True}

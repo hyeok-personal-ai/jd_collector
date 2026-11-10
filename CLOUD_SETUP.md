@@ -2,11 +2,11 @@
 
 ## 구성
 
-공개 소스 저장소와 별도의 비공개 실행 저장소를 사용합니다. 비공개 저장소의 기본 브랜치에는 검토한 코드와 예약 워크플로만, `state` 브랜치에는 `snapshot.json.gz`만 보관합니다. 공개 저장소나 공개 Actions 아티팩트에 수집 데이터를 올리지 않습니다.
+공개 소스 저장소와 별도의 비공개 실행 저장소를 사용합니다. 비공개 저장소의 기본 브랜치에는 검토한 코드와 예약 워크플로만, `state` 브랜치에는 `snapshot.json.gz`와 수집 진단 기록을 보관합니다. 공개 저장소나 공개 Actions 아티팩트에 수집 데이터를 올리지 않습니다.
 
-`python -m app.cloud run --repository OWNER/PRIVATE_REPO --budget 600`은 비공개 여부를 확인한 뒤 기존 상태를 읽고 직행 개발 후보·공개 기업 첫 목록 및 인디스워크 모집 분류를 확인합니다. 전송할 공고는 개발·IT로 분류한 것만 포함합니다. 작업 큐·즐겨찾기·로컬 설정·인증정보·전체 과거 주소 목록은 보내지 않습니다.
+`python -m app.cloud run --repository OWNER/PRIVATE_REPO --budget 120`은 비공개 여부를 확인한 뒤 기존 상태를 읽고 직행 개발 후보·공개 기업 첫 목록 및 인디스워크 모집 분류를 확인합니다. 새 공고는 개발·IT로 분류한 것부터 저장하며, 이미 추적한 공고는 분류가 바뀌어도 마감·수정 확인을 위해 보존합니다. 개인 작업 큐·즐겨찾기·지원 기록·기술 프로필·로컬 벡터·인증정보는 보내지 않습니다. 발견한 미처리 주소와 수집 위치는 비공개 상태에 보존합니다.
 
-일반적인 비공개 예약 워크플로는 6시간 간격으로 실행하고 `contents: write` 권한의 해당 저장소 GITHUB_TOKEN을 사용합니다. 체크아웃 인증정보는 보존하지 않으며 수집 산출물을 로그·캐시·Actions 아티팩트로 업로드하지 않습니다. 실제 공고가 있는 상태 브랜치에는 워크플로 파일을 두지 않습니다. 실행 환경은 작업마다 초기화하고 상태 파일로 이어받습니다.
+일반적인 비공개 예약 워크플로는 매일 한국 시간 09:23 (`23 0 * * *` UTC)에 실행하고 `contents: write` 권한의 해당 저장소 GITHUB_TOKEN을 사용합니다. 체크아웃 인증정보는 보존하지 않으며 수집 산출물을 로그·캐시·Actions 아티팩트로 업로드하지 않습니다. 실제 공고가 있는 상태 브랜치에는 워크플로 파일을 두지 않습니다. 실행 환경은 작업마다 초기화하고 상태 파일로 이어받습니다.
 
 GitHub 예약은 지연되거나 실행 한도에 영향을 받을 수 있습니다. 실시간 서버나 정확한 시각 실행을 보장하지 않습니다. 사이트의 robots·보안 검증·접근 제한도 그대로 적용합니다. 클라우드가 차단 해제 수단은 아닙니다.
 
@@ -21,7 +21,7 @@ GitHub 예약은 지연되거나 실행 한도에 영향을 받을 수 있습니
 
 앱을 다시 켜면 즉시 확인하고 이후 5분마다 새 상태를 확인합니다. 화면의 **클라우드 공고 가져오기**로 수동 실행할 수 있습니다. CLI는 `python -m app.cloud sync`입니다.
 
-출처/공고 ID로 합치며 로컬 ID와 즐겨찾기를 유지합니다. 더 최근에 원문을 확인한 로컬 값은 덮어쓰지 않습니다. 확정 마감일은 가져온 뒤에도 로컬에서 만료 처리합니다. 가져오기는 로컬 DB의 기존 쓰기 잠금을 따릅니다. 다운로드·검증 실패 시 기존 공고와 마지막 성공 위치를 보존하고 다음에 재시도합니다.
+출처/공고 ID로 합치며 로컬 ID와 즐겨찾기·지원 상태·메모를 유지합니다. 더 최근에 원문을 확인한 로컬 값은 덮어쓰지 않습니다. 확정 마감일은 가져온 뒤에도 로컬에서 만료 처리합니다. 가져오기는 로컬 DB의 기존 쓰기 잠금을 따릅니다. 다운로드·검증 실패 시 기존 공고와 마지막 성공 위치를 보존하고 다음에 재시도합니다.
 
 클라우드 수집 상태는 로컬 수집 기록과 구분됩니다. 한 출처의 실패를 전체 성공으로 해석하지 않습니다. 공개 기업 첫 목록은 기업 전체 페이지나 전체 개발 공고의 완전 수집을 의미하지 않습니다.
 
@@ -45,7 +45,9 @@ WordPress pages are saved incrementally. Completed pages survive a later failure
 
 ### Local skill matching
 
-Save a comma-separated technology profile in the local app, then filter for any or all selected technologies and optionally backend/server/infrastructure titles. Sort by the number of technologies mentioned. Matching uses title/body mentions and aliases; it does not determine eligibility or distinguish required from preferred qualifications. Profiles stay in local control storage and are excluded from cloud snapshots. A derived index refreshes when collected content changes.
+Select technology tags in the app and save a local profile. Filter by any/all mentions, job title family, employment type, experience, location and application status. Required/preferred/general mentions use shared extractive section rules and retain source evidence; alternatives remain visible and matching is not an eligibility verdict. Profiles, notes and application records stay on the PC.
+
+The collection network budget is 120 seconds by default, split fairly between sources. Setup, restoration, snapshot saving and audit take additional time. A time limit saves completed progress and resumes next day. HTTP 429 stores a source-specific cooldown (including Retry-After); other sources continue. Seven days is a discovery window, not a deletion deadline for pending URLs.
 
 ### Private automatic collection audits
 

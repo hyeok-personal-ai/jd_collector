@@ -239,6 +239,17 @@ def sync_status():
     return {'configured': config.exists(), **(json.loads(status.read_text(encoding='utf-8')) if status.exists() else {})}
 
 
+async def merge_without_blocking(doc):
+    task=asyncio.create_task(asyncio.to_thread(merge_jobs,doc))
+    try:
+        return await asyncio.shield(task)
+    except asyncio.CancelledError:
+        # A thread cannot be cancelled. Retain the surrounding writer lock until
+        # its transaction finishes, even during a graceful API shutdown.
+        await task
+        raise
+
+
 async def sync_once():
     config_path = data_dir() / 'cloud-config.json'
     if not config_path.exists():
@@ -256,7 +267,7 @@ async def sync_once():
         sha, doc = await asyncio.to_thread(remote_snapshot, config['repository'], previous.get('sha'))
         if doc:
             async with writer_guard(SessionLocal):
-                counts = merge_jobs(doc)
+                counts = await merge_without_blocking(doc)
             result.update(status='synced', sha=sha, imported_at=utcnow().isoformat(), counts=counts,
                           source_status=doc.get('source_status', {}), cloud_generated_at=doc['generated_at'])
         else:
@@ -264,6 +275,8 @@ async def sync_once():
         result.pop('error', None)
     except asyncio.CancelledError:
         raise
+    except TimeoutError:
+        result.update(status='deferred',error='Local collection is writing; cloud sync will retry after the current batch')
     except Exception as exc:
         result.update(status='error', error=type(exc).__name__ + ': private cloud sync unavailable; check gh login/permission')
     finally:
@@ -286,7 +299,9 @@ async def sync_loop():
         await asyncio.sleep(300)
 
 
-async def collect_cloud(repo, budget=600):
+async def collect_cloud(repo, budget=120):
+    if budget < 2:
+        raise ValueError('Collection budget must allow both sources to run')
     require_private(repo)
     init_db()
     _, doc = await asyncio.to_thread(remote_snapshot, repo)
@@ -318,16 +333,21 @@ async def collect_cloud(repo, budget=600):
     deadline = time.monotonic() + budget
     with SessionLocal() as db:
         known_wp = list(db.scalars(select(Job.external_id).where(Job.source_id == 'inthiswork')))
-    for source, cls, limit in [('inthiswork', DevelopmentInThisWorkCrawler, 5000), ('zighang', ZighangPublicCrawler, 100)]:
+    for index, (source, cls, limit) in enumerate([
+            ('inthiswork', DevelopmentInThisWorkCrawler, 5000), ('zighang', ZighangPublicCrawler, 100)]):
         evidence.clear()
+        started = time.monotonic()
+        # Reserve an equal share for sources still to run. Unused time transfers
+        # forward; state export/upload is outside this network-work budget.
+        source_deadline = started + max(0, deadline-started) / (2-index)
         waiting = waiting_status(store, source)
         if waiting:
             statuses[source] = waiting
             continue
         try:
-            while time.monotonic() < deadline:
-                allowance = min(180, deadline - time.monotonic()) if source == 'inthiswork' else deadline - time.monotonic()
-                async with asyncio.timeout(max(1, allowance)):
+            while time.monotonic() < source_deadline:
+                allowance = source_deadline - time.monotonic()
+                async with asyncio.timeout(max(0.001, allowance)):
                     crawler = cls(store, known_ids=known_wp) if source == 'inthiswork' else cls(store)
                     run = await run_crawler(crawler, max_items=limit, recheck_hours=6, fetcher_factory=diagnostic_fetcher)
                 statuses[source] = {'status': run.status, 'seen': run.seen_count,
@@ -349,8 +369,15 @@ async def collect_cloud(repo, budget=600):
                     break
         except TimeoutError:
             statuses[source] = {'status': 'limited', 'reason': 'time_budget', 'checked_at': utcnow().isoformat()}
-            if time.monotonic() >= deadline:
-                break
+        except Exception as exc:
+            # Even an unexpected source failure must not lose committed progress
+            # or prevent the other independent source from running.
+            statuses[source] = {'status':'failed', 'reason':'source_execution_failure',
+                                'failure':failure_evidence(str(exc)),
+                                'checked_at':utcnow().isoformat(), 'responses':list(evidence)}
+        statuses.setdefault(source, {'status':'limited', 'reason':'time_budget',
+                                     'checked_at':utcnow().isoformat()})
+        statuses[source]['elapsed_seconds'] = round(time.monotonic()-started, 2)
     statuses.setdefault('zighang', {})['recent_discovery'] = recent_summary(store)
     snapshot = export_snapshot(store=store, statuses=statuses, include_tracked=True)
     await asyncio.to_thread(publish_snapshot, repo, snapshot)
@@ -361,7 +388,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('command', choices=['bootstrap', 'run', 'sync'])
     parser.add_argument('--repository')
-    parser.add_argument('--budget', type=int, default=600)
+    parser.add_argument('--budget', type=int, default=120)
     args = parser.parse_args()
     logging.disable(logging.CRITICAL)
     if args.command == 'bootstrap':

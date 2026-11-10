@@ -11,7 +11,7 @@ Python 3.11 이상이 필요합니다.
 python -m venv .venv
 # Windows: .venv\Scripts\activate
 # Linux/macOS: source .venv/bin/activate
-python -m pip install -e ".[dev]"
+python -m pip install -e ".[dev,analysis]"
 python -X utf8 -m app.launcher
 ```
 
@@ -48,3 +48,18 @@ GitHub Actions는 Linux/Windows, Python 3.11/3.12에서 공개 파일 점검·�
 ## PC가 꺼져 있을 때 수집
 
 별도의 **비공개 저장소**에서 예약 수집하고, 로컬 앱이 실행될 때 비공개 스냅샷을 가져오는 기능을 제공합니다. 공개 저장소의 CI에서는 수집하지 않습니다. [CLOUD_SETUP.md](CLOUD_SETUP.md)를 참고하세요.
+
+## 공고 분석과 유사도
+
+- 고용 형태·지원 상태·백엔드/서버/인프라 필터, 지원 예정/완료 및 메모를 로컬에 저장합니다. 공고가 마감돼도 기록은 유지됩니다.
+- 상세 화면에서 담당 업무·자격요건·우대·근무 조건과 원문 근거를 확인하고 2~4개 공고를 비교합니다.
+- 현재 검색 조건 전체의 기술 요구를 집계합니다. 같은 기술이 여러 구분에 등장할 수 있고 출처 간 중복은 집계에 포함됩니다.
+- 별도 분석 프로세스가 새 공고·변경 공고의 의미 벡터를 생성합니다. 진행 중 개발 공고를 먼저 처리하고 나머지 저장 공고도 이어서 처리합니다.
+- 유사 공고는 코사인 유사도와 공통 기술·비슷한 문장 근거를 보여줍니다. 점수는 지원 적합률이나 합격 확률이 아닙니다.
+- 중복 후보를 검토해 출처 링크를 묶거나 해제할 수 있습니다. 원본 공고·지원 기록은 삭제하지 않습니다.
+
+분석에는 [FastEmbed](https://qdrant.github.io/fastembed/)와 [multilingual MiniLM](https://huggingface.co/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2)을 사용합니다. 최초 실행 시 공개 모델을 내려받고 이후 공고 본문 임베딩은 PC에서 계산합니다. 모델은 Apache-2.0이며 FastEmbed의 양자화 ONNX 배포를 사용합니다. 모델 다운로드 연결이 없거나 분석 패키지가 없으면 색인 대기/오류를 표시합니다. 예약 수집에는 분석 패키지와 모델이 필요하지 않습니다.
+
+벡터는 원문 변경 시 다시 계산하며 생성 중인 공고나 오래된 벡터를 최신 검색 결과인 것처럼 사용하지 않습니다. 기존 SQLite DB에 파생 테이블을 추가하므로 원문과 로컬 기록을 유지합니다. 분석 중에도 검색 API는 별도 프로세스에서 응답합니다.
+
+이력서·포트폴리오 업로드/개인 경험 추천, Markdown/HTML/PDF 리포트 내보내기는 아직 포함하지 않습니다.

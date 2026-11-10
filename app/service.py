@@ -93,12 +93,12 @@ async def serve_queue(store=None):
                 continue
             task = asyncio.create_task(collect_task(current, settings))
             try:
-                deadline = time.monotonic() + 600
+                deadline = time.monotonic() + 120
                 while not task.done():
                     done, _ = await asyncio.wait({task}, timeout=5)
                     store.heartbeat()
                     if not done and time.monotonic() > deadline:
-                        raise TimeoutError('Collection exceeded 10 minute limit')
+                        raise TimeoutError('Collection batch budget reached; progress resumes in the next batch')
                 result = await task
                 status = result.status
                 if status not in ('completed', 'limited'):
@@ -110,6 +110,10 @@ async def serve_queue(store=None):
             except asyncio.CancelledError:
                 store.finish(current, status='interrupted', error='Worker stopped; retry available')
                 raise
+            except TimeoutError:
+                store.finish(current,status='limited',error='Time budget reached; saved progress resumes next batch')
+                if store.settings()['auto_collect']:
+                    store.enqueue([current['target_key']])
             except Exception as exc:
                 message = f'{type(exc).__name__}: {str(exc)[:800]}'
                 store.finish(current, status=failure_status(message), error=message)
@@ -119,6 +123,9 @@ async def serve_queue(store=None):
                     task.cancel()
                     await asyncio.gather(task, return_exceptions=True)
             current = None
+            # Yield outside the task's cancellation handler: completed tasks must
+            # remain completed if the worker stops during this fairness interval.
+            await asyncio.sleep(.25)
     finally:
         lock.release()
 

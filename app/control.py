@@ -37,6 +37,10 @@ class ControlStore:
             CREATE UNIQUE INDEX IF NOT EXISTS one_active_task ON tasks(target_key) WHERE status IN ('queued','running');
             CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS bookmarks (job_id INTEGER PRIMARY KEY, saved_at REAL NOT NULL);
+            CREATE TABLE IF NOT EXISTS applications (job_id INTEGER PRIMARY KEY,
+                status TEXT NOT NULL DEFAULT 'none', note TEXT NOT NULL DEFAULT '', updated_at REAL NOT NULL);
+            CREATE TABLE IF NOT EXISTS duplicate_members (job_id INTEGER PRIMARY KEY, group_id TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS duplicate_rejections (a INTEGER NOT NULL,b INTEGER NOT NULL,PRIMARY KEY(a,b));
             CREATE TABLE IF NOT EXISTS worker (id INTEGER PRIMARY KEY CHECK(id=1), heartbeat REAL NOT NULL);
             PRAGMA user_version=1;
             ''')
@@ -202,6 +206,55 @@ class ControlStore:
     def bookmarks(self):
         with self.connection() as db:
             return [r['job_id'] for r in db.execute('SELECT job_id FROM bookmarks ORDER BY saved_at DESC')]
+
+    def applications(self, status=None):
+        with self.connection() as db:
+            rows = db.execute('SELECT * FROM applications' + (' WHERE status=?' if status else ''),
+                              (status,) if status else ()).fetchall()
+            return {r['job_id']:dict(r) for r in rows}
+
+    def save_application(self, job_id, status, note):
+        with self.connection() as db:
+            db.execute('''INSERT INTO applications VALUES (?,?,?,?) ON CONFLICT(job_id)
+                DO UPDATE SET status=excluded.status,note=excluded.note,updated_at=excluded.updated_at''',
+                       (job_id,status,note,time.time()))
+        return self.applications()[job_id]
+
+    def duplicate_reviews(self):
+        with self.connection() as db:
+            groups={}
+            for row in db.execute('SELECT * FROM duplicate_members ORDER BY group_id,job_id'):
+                groups.setdefault(row['group_id'],[]).append(row['job_id'])
+            rejected={tuple(r) for r in db.execute('SELECT a,b FROM duplicate_rejections')}
+        return groups,rejected
+
+    def group_duplicates(self, ids):
+        import uuid
+        from itertools import combinations
+        group_id=uuid.uuid4().hex
+        with self.connection() as db:
+            db.execute('BEGIN IMMEDIATE')
+            placeholders=','.join('?' for _ in ids)
+            previous=[r[0] for r in db.execute(f'SELECT DISTINCT group_id FROM duplicate_members WHERE job_id IN ({placeholders})',ids)]
+            members=set(ids)
+            for group in previous:
+                members.update(r[0] for r in db.execute('SELECT job_id FROM duplicate_members WHERE group_id=?',(group,)))
+            db.executemany('INSERT OR REPLACE INTO duplicate_members VALUES (?,?)',[(i,group_id) for i in members])
+            db.executemany('DELETE FROM duplicate_rejections WHERE a=? AND b=?',list(combinations(sorted(members),2)))
+        return group_id
+
+    def split_duplicates(self, group_id):
+        from itertools import combinations
+        with self.connection() as db:
+            db.execute('BEGIN IMMEDIATE')
+            ids=[r[0] for r in db.execute('SELECT job_id FROM duplicate_members WHERE group_id=? ORDER BY job_id',(group_id,))]
+            if not ids:raise KeyError(group_id)
+            db.executemany('INSERT OR IGNORE INTO duplicate_rejections VALUES (?,?)',list(combinations(ids,2)))
+            db.execute('DELETE FROM duplicate_members WHERE group_id=?',(group_id,))
+
+    def reject_duplicate(self,a,b):
+        with self.connection() as db:
+            db.execute('INSERT OR IGNORE INTO duplicate_rejections VALUES (?,?)',tuple(sorted((a,b))))
 
     def bookmark(self, job_id, saved):
         with self.connection() as db:

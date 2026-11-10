@@ -163,6 +163,27 @@ def test_unconfigured_sync_performs_no_network(monkeypatch, tmp_path):
     assert asyncio.run(cloud.sync_once()) == {'configured': False}
 
 
+def test_cloud_merge_yields_to_api_and_waits_for_transaction_on_cancel(monkeypatch):
+    import asyncio
+    import threading
+    began=threading.Event();release=threading.Event();finished=threading.Event()
+    def merge(doc):
+        began.set();release.wait(3);finished.set();return {'created':1}
+    monkeypatch.setattr(cloud,'merge_jobs',merge)
+    async def check():
+        task=asyncio.create_task(cloud.merge_without_blocking({}))
+        await asyncio.to_thread(began.wait,2)
+        # This coroutine is still running while synchronous merge waits.
+        assert not finished.is_set()
+        task.cancel()
+        await asyncio.sleep(.02)
+        assert not task.done()
+        release.set()
+        with pytest.raises(asyncio.CancelledError):await task
+        assert finished.is_set()
+    asyncio.run(check())
+
+
 def test_auto_sync_retries_after_configuration_failure(monkeypatch):
     import asyncio
     calls = []
