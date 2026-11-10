@@ -19,7 +19,8 @@ YEAR_UPTO = re.compile(r'(?:경력\s*)?(\d{1,2})\s*(?:년|years?|yrs?)\s*(?:이�
 YEAR_PLUS = re.compile(r'(\d{1,2})\s*\+\s*(?:년|years?|yrs?)', re.I)
 EN_MIN = re.compile(r'(?:at least|minimum of|minimum)\s*(\d{1,2})\s*(?:years?|yrs?)',re.I)
 # Restrict experience extraction to vacancy title and nearby qualification lines.
-EXP_HINT = re.compile(r'경력|experience|years? (?:of |in )|yrs?',re.I)
+EXP_HINT = re.compile(r'경력|경험|experience|years? (?:of |in )|yrs?',re.I)
+LABEL_VERSION = 'career-sections-v2'
 HARDWARE_TITLE = re.compile(r'\bHW\b|하드웨어|회로\s*설계|기구\s*설계|기계\s*설계|센서|신약|제제|레이다|레이더|\bSAR\b', re.I)
 SOFTWARE_TITLE = re.compile(r'소프트웨어|펌웨어|프로그래|\bSW\b|software|firmware|programmer|백엔드|프론트엔드|웹\s*개발|앱\s*개발', re.I)
 CORE_DEVELOPMENT_ROLE = re.compile(r'백엔드|프론트엔드|풀스택|프로그래머|프로그래밍|펌웨어|firmware|programmer|frontend|front.?end|back.?end|full.?stack|웹\s*개발|앱\s*개발|소프트웨어\s*(?:개발|엔지니어)|software\s+(?:engineer|developer)|(?:Java|Python|C\+\+|C#|TypeScript|Kotlin|Swift|React|Node|Flutter|Unity|Unreal)\s*(?:개발|developer|engineer)',re.I)
@@ -39,15 +40,23 @@ class Labels:
         return d
 
 
+def experience_lines(draft):
+    from .posting_sections import extract_sections
+    sections=extract_sections(draft)
+    # Preferred years and employee benefits are not minimum entry conditions.
+    rows=sections['required'] or sections['other']
+    return [row['text'] for row in rows if EXP_HINT.search(row['text']) or JUNIOR.search(row['text'])]
+
+
 def label_job(draft: JobDraft) -> Labels:
     title = draft.title or ''
     short = ' '.join(filter(None, [title, draft.recruitment_type, draft.employment_type]))
     # Short anchored snippets avoid taking years from employee benefits / company history.
-    lines = (draft.body_text or '').splitlines()
+    lines = experience_lines(draft)
     qualifiers = [line[max(0, m.start()-60):m.end()+180]
                   for line in lines for m in EXP_HINT.finditer(line)][:30]
-    if not qualifiers and draft.body_text and len(draft.body_text) < 650:
-        qualifiers = [draft.body_text]
+    if not qualifiers:
+        qualifiers = [line for line in lines if JUNIOR.search(line)]
     experience_text = short + '\n' + '\n'.join(qualifiers)
     reasons = []
     title_it = bool(IT_TERMS.search(title))

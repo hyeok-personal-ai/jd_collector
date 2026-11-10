@@ -1,6 +1,6 @@
 """Extractive, source-linked posting analysis. No generated eligibility claims."""
 
-from .job_labels import label_job, EXP_HINT, JUNIOR, SENIOR
+from .job_labels import label_job, experience_lines, EXP_HINT, JUNIOR, SENIOR
 from .skill_matching import CATALOG, requirement_mentions
 
 from .posting_sections import plain_body, extract_sections
@@ -15,7 +15,7 @@ def structured_analysis(job):
             'technologies':requirement_mentions(job,list(CATALOG)),
             'career':{'level':label.career,'min_years':label.min_years,'max_years':label.max_years,
                       'reasons':label.reasons,
-                      'evidence':[line.strip() for line in (job.title+'\n'+raw).splitlines()
+                      'evidence':[line.strip() for line in [job.title,*experience_lines(job)]
                                   if EXP_HINT.search(line) or JUNIOR.search(line) or SENIOR.search(line)]},
             'conditions':{'region':job.region,'employment_type':job.employment_type,
                           'deadline_on':str(job.deadline_on) if job.deadline_on else None,

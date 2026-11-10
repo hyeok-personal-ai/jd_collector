@@ -35,6 +35,8 @@ async def lifespan(_app: FastAPI):
     cloud_worker = None
     vector_worker = None
     if os.getenv('RADAR_WORKER') == '1':
+        from .backfill import ensure_current_labels
+        await asyncio.to_thread(ensure_current_labels)
         from .service import serve_queue
         worker = asyncio.create_task(serve_queue())
         from .cloud import sync_loop

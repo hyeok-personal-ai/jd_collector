@@ -63,6 +63,17 @@ def test_unrestricted_languages_and_negations_are_not_mandatory_technologies():
     assert result['technologies']['preferred']==['AWS']
 
 
+def test_required_years_recognize_korean_experience_and_exclude_preferences():
+    from app.job_labels import label_job
+    job=sample(body_text='자격요건\n3년 이상의 서버 개발 및 운영 경험\n우대사항\n10년 이상의 업계 경험\n복리후생\n5년 이상 근속 시 휴가')
+    assert label_job(job).min_years==3
+    assert label_job(job).career=='early'
+    assert structured_analysis(job)['career']['evidence']==['3년 이상의 서버 개발 및 운영 경험']
+    job=sample(body_text='자격요건\nPython 개발 경험\n우대사항\n경력 5년 이상')
+    assert label_job(job).min_years is None
+    assert label_job(job).career=='unknown'
+
+
 def test_comparison_uses_same_requirement_category():
     result=compare_postings([sample(),sample(id=2,body_text='자격요건\nJava 경험\n우대사항\nPython 경험')])
     assert result['common_technologies']['required']==['Java']

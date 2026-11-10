@@ -246,6 +246,13 @@ class SchemaRevision(Base):
     version: Mapped[int]
 
 
+class AnalysisRevision(Base):
+    """Revision of rebuildable classifications, independent of user records."""
+    __tablename__ = 'analysis_revisions'
+    key: Mapped[str] = mapped_column(String(100),primary_key=True)
+    version: Mapped[str] = mapped_column(String(100))
+
+
 class HttpMetric(Base):
     __tablename__ = 'http_metrics'
     id: Mapped[int] = mapped_column(primary_key=True)
