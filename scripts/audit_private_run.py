@@ -1,12 +1,13 @@
 """Actions-only audit. Standard library; no posting bodies in reports or logs."""
 import base64
 import gzip
+import hashlib
 import io
 import json
 import os
 import re
 import subprocess
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 
@@ -69,6 +70,52 @@ def put_report(repo,path,report):
     api(f'repos/{repo}/contents/{path}',payload)
 
 
+def daily_observation(previous, report, run, policy_id, *, now=None):
+    """Count actual scheduled calendar days; manual retries cannot fill gaps."""
+    now=now or datetime.now(timezone.utc)
+    records=dict(previous.get('days',{})) if previous and previous.get('policy_id')==policy_id else {}
+    started=datetime.fromisoformat(run['created_at'].replace('Z','+00:00'))
+    if started.tzinfo is None:raise ValueError('Timezone required for run timestamp')
+    day=started.astimezone(timezone(timedelta(hours=9))).date().isoformat()
+    if run.get('event')=='schedule':
+        old=records.get(day)
+        # An older run inspected later must not replace a more recent schedule.
+        if not old or started>=datetime.fromisoformat(old['started_at']):
+            sources={source:(report.get('sources',{}).get(source) or {}).get('status','missing')
+                     for source in ('inthiswork','zighang')}
+            records[day]={'run_id':str(run['id']),'started_at':started.isoformat(),
+                          'checked_at':report['checked_at'],'healthy':report['healthy'],
+                          'sources':sources,'sources_checked':report['healthy'] and
+                          all(status in ('completed','limited') for status in sources.values())}
+    records={day:records[day] for day in sorted(records)[-35:]}
+    latest=max(records) if records else None
+    def streak(field):
+        if not latest:return 0
+        cursor=date.fromisoformat(latest);count=0
+        while records.get(cursor.isoformat(),{}).get(field) is True:
+            count+=1;cursor-=timedelta(days=1)
+        return count
+    fresh=False
+    if latest:
+        age=(now-datetime.fromisoformat(records[latest]['started_at'])).total_seconds()
+        fresh=0<=age<=26*3600
+    operational=streak('healthy');collected=streak('sources_checked')
+    return {'version':1,'policy_id':policy_id,'timezone':'Asia/Seoul','days':records,
+            'checked_at':now.isoformat(),'latest_scheduled_day':latest,
+            'latest_schedule_fresh':fresh,'healthy_schedule_streak':operational,
+            'both_sources_checked_streak':collected,
+            'seven_day_gate_passed':fresh and operational>=7 and collected>=7,
+            'note':'Only scheduled runs count. Manual runs, missing days, changed workflow policy, stale results and source cooldowns cannot establish seven consecutive daily collection checks.'}
+
+
+def read_private_json(repo,path):
+    meta=api(f'repos/{repo}/contents/{path}?ref=state',missing_ok=True)
+    if not meta:return None
+    if meta.get('size',0)>1_000_000:raise ValueError('Observation record too large')
+    if meta.get('encoding')!='base64':meta=api(f'repos/{repo}/git/blobs/{meta["sha"]}')
+    return json.loads(base64.b64decode(meta['content']))
+
+
 def main():
     repo=os.environ['GITHUB_REPOSITORY'];run_id=os.environ['GITHUB_RUN_ID']
     if not re.fullmatch(r'[\w.-]+/[\w.-]+',repo) or not run_id.isdecimal():raise ValueError('Invalid audit identity')
@@ -91,11 +138,20 @@ def main():
         for j in jobs.get('jobs',[]) for s in j.get('steps',[]) if s.get('conclusion') in ('failure','cancelled','timed_out')]
     put_report(repo,f'audits/{run_id}.json',report)
     put_report(repo,'latest-audit.json',report)
+    # A workflow change starts a new observation period. Source-code fixes do
+    # not manufacture historical daily executions or replace old schedules.
+    workflow=Path(__file__).parents[1]/'.github/workflows/collect.yml'
+    policy_id=hashlib.sha256(workflow.read_text(encoding='utf-8').encode()).hexdigest()
+    observation=daily_observation(read_private_json(repo,'daily-observation.json'),report,run,policy_id)
+    put_report(repo,'daily-observation.json',observation)
     summary='## Private collection audit\n\n'+('Healthy; unfinished inventory resumes next run.' if report['healthy'] else 'Collection needs attention. See private audit record.')+'\n\n'
     summary+='\n'.join(f'- {source}: {v["status"]} / {v["reason"]}' for source,v in report['sources'].items())
     summary+=f'\n\nPrivate state record: `audits/{run_id}.json`\n'
+    summary+=f'\nScheduled operation streak: {observation["healthy_schedule_streak"]} days; both sources checked: {observation["both_sources_checked_streak"]} days. Seven-day gate: {observation["seven_day_gate_passed"]}. Manual runs do not count.\n'
     if os.getenv('GITHUB_STEP_SUMMARY'):Path(os.environ['GITHUB_STEP_SUMMARY']).write_text(summary,encoding='utf-8')
-    print(json.dumps({'audit_saved':True,'healthy':report['healthy'],'sources':report['sources']}))
+    print(json.dumps({'audit_saved':True,'healthy':report['healthy'],'sources':report['sources'],
+                      'scheduled_days':observation['healthy_schedule_streak'],
+                      'seven_day_gate_passed':observation['seven_day_gate_passed']}))
     return 0 if report['healthy'] else 1
 
 
