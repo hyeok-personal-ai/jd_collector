@@ -32,6 +32,17 @@ if ($LASTEXITCODE -ne 0) {
     & $python -m pip install -e '.[documents]'
     if ($LASTEXITCODE -ne 0) { throw '문서 분석/리포트 패키지 설치 실패' }
 }
+$alreadyRunning = $false
+try {
+    $health = Invoke-RestMethod "http://127.0.0.1:$Port/api/health" -TimeoutSec 2
+    $definition = Invoke-RestMethod "http://127.0.0.1:$Port/openapi.json" -TimeoutSec 2
+    $alreadyRunning = $health.ok -and $definition.info.title -eq 'Recruit Radar'
+} catch {}
+if ($alreadyRunning) {
+    if (-not $NoBrowser) { Start-Process "http://127.0.0.1:$Port" }
+    Write-Host "Recruit Radar is already running at http://127.0.0.1:$Port/"
+    exit 0
+}
 if (-not $NoBrowser) { Start-Process "http://127.0.0.1:$Port" }
 & $python -X utf8 -m app.launcher --port $Port
 exit $LASTEXITCODE
