@@ -112,3 +112,69 @@ def test_duplicate_grouping_and_split_preserve_jobs_and_records(client):
     assert tuple(sorted(ids)) in ControlStore().duplicate_reviews()[1]
     client.post('/api/reviewed-duplicates',json={'ids':ids},headers=headers)
     assert tuple(sorted(ids)) not in ControlStore().duplicate_reviews()[1]
+
+
+def test_conversational_english_headings_separate_requirements_preferences_and_culture():
+    body=("Roles and Responsibilities\nOperate APIs\nWhat We're Looking For\n2+ years of Python experience\n"
+          "Preferred Skills\nRedis operations\nSupporting Your Best Work and Your Best Life:\nDocker training\n"
+          "Example Values:\nGo Further Together\n")
+    result=structured_analysis(sample(body_text=body))
+    assert result['technologies']['required']==['Python']
+    assert result['technologies']['preferred']==['Redis']
+    assert result['technologies']['mentioned']==['Docker']
+    assert result['career']['min_years']==2
+    assert result['sections']['duties'][0]['text']=='Operate APIs'
+    assert result['sections']['other'][-1]['text']=='Go Further Together'
+    for rows in result['sections'].values():
+        for row in rows:assert body[row['start']:row['end']]==row['text']
+
+
+def test_key_qualifications_and_ideal_years_are_separate():
+    result=structured_analysis(sample(body_text='Responsibilities and Opportunities\nSDK development\nKey Qualifications\nPython and C++\nIdeal Qualifications\n5+ years of industry experience\nDocker operations'))
+    assert result['technologies']['required']==['C++','Python']
+    assert result['technologies']['preferred']==['Docker']
+    assert result['career']['min_years'] is None
+    assert [r['text'] for r in result['sections']['duties']]==['SDK development']
+
+
+def test_open_ended_experience_range_and_spelled_out_minimum():
+    from app.job_labels import label_job
+    result=label_job(sample(body_text='Your Skills and Qualifications\n0-2+ years of data engineering experience.\nYOUR GROWTH\n10 years of company history'))
+    assert result.min_years==0 and result.max_years is None
+    result=label_job(sample(body_text='How Do I Know if the Role is Right For Me?\nAt least one year of software-testing experience.'))
+    assert result.min_years==1
+    result=label_job(sample(body_text='YOUR QUALIFICATIONS AND SKILLS\nAt least five years of experience.\nPreferred Qualifications\nPython'))
+    assert result.min_years==5 and result.career=='experienced'
+
+
+def test_explicit_optional_sentence_inside_requirements():
+    result=structured_analysis(sample(body_text='Your Qualifications and Skills\nPython development experience\nSQL experience is a plus.\nExposure to AWS will be beneficial.'))
+    assert result['technologies']['required']==['Python']
+    assert result['technologies']['preferred']==['AWS','SQL']
+
+
+def test_english_language_alternative_and_hardware_role():
+    from app.job_labels import label_job
+    result=structured_analysis(sample(body_text='Requirements\nProficiency in at least one language (Python, Java, Go).'))
+    assert result['sections']['required'][0]['alternative']
+    assert label_job(sample(title='Hardware QA Engineer',body_text='Python test automation')).it_match=='unknown'
+    assert label_job(sample(title='Hardware Software Engineer',body_text='Python device software')).it_match=='yes'
+
+
+def test_api_plain_body_preserves_stored_source_and_evidence_offsets(client):
+    from sqlalchemy import select
+    from app import api
+    from app.database import Job,get_session
+    session=api.app.dependency_overrides[get_session]();db=next(session)
+    try:
+        job=db.scalar(select(Job).order_by(Job.id))
+        raw='<div><h2>Requirements</h2><p>Python &amp; Java</p><script>alert(1)</script></div>'
+        job.body_text=raw;db.commit()
+        response=client.get(f'/api/jobs/{job.id}').json()
+        assert response['body_text']=='Requirements\nPython & Java'
+        analysis=client.get(f'/api/jobs/{job.id}/analysis').json()
+        row=analysis['sections']['required'][0]
+        assert response['body_text'][row['start']:row['end']]==row['text']
+        db.expire_all()
+        assert db.get(Job,job.id).body_text==raw
+    finally:session.close()

@@ -609,13 +609,15 @@ def vector_status(db: SessionDep):
 @app.get('/api/jobs/{job_id}/similar')
 def similar_postings(job_id: int, db: SessionDep, open_only: bool=True,
                      entry_only: bool=False, role: RoleFilter='', region: str | None=None,
+                     it_only: bool=False, korea_only: bool=False, include_unknown_entry: bool=False,
                      employment_type: EmploymentFilter='', limit: int=Query(10,ge=1,le=30)):
     from .vector_index import nearest
     job=db.get(Job,job_id)
     if job is None:raise HTTPException(404,'Posting not found')
     try:
         return nearest(db,job,job_conditions(open_only=open_only,entry_only=entry_only,
-                       role=role,region=region,employment_type=employment_type),limit)
+                       role=role,region=region,employment_type=employment_type,
+                       it_only=it_only,korea_only=korea_only,include_unknown_entry=include_unknown_entry),limit)
     except ImportError:raise HTTPException(503,'Local analysis dependencies are not installed')
 
 

@@ -74,3 +74,21 @@ def test_parser_revision_reuses_only_identical_model_input(client):
         assert index_status(db)['pending']==0
         assert build_batch(model,Tokenizer(),factory)==0
     finally:session.close()
+
+
+def test_similar_api_preserves_domestic_filter(client):
+    pytest.importorskip('numpy')
+    from app.classification_store import update_classification
+    session=api.app.dependency_overrides[get_session]();db=next(session)
+    try:
+        jobs=db.scalars(select(Job).order_by(Job.id)).all()
+        for i,job in enumerate(jobs):
+            job.region='London, UK' if i==1 else 'Seoul, South Korea'
+            update_classification(db,job)
+            db.add(embedding(job))
+        db.commit()
+        unfiltered=client.get(f'/api/jobs/{jobs[0].id}/similar').json()
+        assert {r['job']['id'] for r in unfiltered['items']}=={jobs[1].id,jobs[2].id}
+        filtered=client.get(f'/api/jobs/{jobs[0].id}/similar?korea_only=true&it_only=true').json()
+        assert [r['job']['id'] for r in filtered['items']]==[jobs[2].id]
+    finally:session.close()

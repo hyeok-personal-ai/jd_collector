@@ -1,7 +1,7 @@
 """Common normalized model shared by all site adapters."""
 from datetime import date, datetime
 from typing import Literal
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_serializer
 
 
 class Attachment(BaseModel):
@@ -36,3 +36,10 @@ class JobOut(JobDraft):
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+    @field_serializer('body_text')
+    def display_body(self, value):
+        # Preserve stored source content; API views show readable plain text
+        # using the same representation as analysis evidence offsets.
+        from .posting_sections import plain_text
+        return plain_text(value) if value is not None else None

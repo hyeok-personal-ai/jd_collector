@@ -141,3 +141,22 @@ def test_analysis_counts_postings_not_occurrences_and_labels_sampling():
 def test_role_filter_distinguishes_engineering_from_business_and_embedded(title,expected):
     from app.skill_matching import BACKEND_TITLE
     assert bool(re.search(BACKEND_TITLE,title)) is expected
+
+
+def test_skill_revision_rebuilds_unchanged_false_positive(client):
+    from app.database import Job,JobSkillIndex,AnalysisRevision
+    from app.skill_matching import ensure_skill_index,SKILL_INDEX_VERSION
+    from sqlalchemy import select
+    session=api.app.dependency_overrides[get_session]();db=next(session)
+    try:
+        job=db.scalar(select(Job).order_by(Job.id))
+        job.body_text='Go Further Together';db.commit()
+        db.merge(JobSkillIndex(job_id=job.id,content_hash=job.content_hash,terms='|go|'))
+        db.merge(AnalysisRevision(key='skill_index',version='old'));db.commit()
+        ensure_skill_index(db)
+        assert '|go|' not in db.get(JobSkillIndex,job.id).terms
+        assert db.get(AnalysisRevision,'skill_index').version==SKILL_INDEX_VERSION
+        assert re.search(skill_pattern('Go'),'Python or Go')
+        assert re.search(skill_pattern('Go'),'Golang backend services')
+        assert not re.search(skill_pattern('Go'),'Go Further Together')
+    finally:session.close()

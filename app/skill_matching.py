@@ -3,7 +3,9 @@ import re
 import threading
 from functools import lru_cache
 from sqlalchemy import case, func, select, exists, or_
-from .database import Job, JobSkillIndex
+from .database import Job, JobSkillIndex, AnalysisRevision
+
+SKILL_INDEX_VERSION='technology-mentions-v2'
 
 CATALOG = {
     'Python': ['python','파이썬'], 'Java':['java','자바'],
@@ -49,7 +51,9 @@ def normalize_skills(raw):
 def skill_pattern(name):
     aliases=CATALOG.get(name,[name])
     # ASCII identifier boundaries prevent Java matching JavaScript and Go matching Django.
-    parts=[re.escape(a)+(r'(?!스크립트)' if name=='Java' and a=='자바' else '') for a in aliases]
+    parts=[re.escape(a)+(r'(?!스크립트)' if name=='Java' and a=='자바' else '')+
+           (r'(?!\s+(?:further|beyond|above and beyond|the extra mile|hand in hand)\b)' if name=='Go' and a=='go' else '')
+           for a in aliases]
     return r'(?i)(?<![a-z0-9_])(?:'+'|'.join(parts)+r')(?![a-z_+#])'
 
 
@@ -78,15 +82,21 @@ def ensure_skill_index(db):
         _refresh_skill_index(db)
 
 def _refresh_skill_index(db):
-    stale=db.scalars(select(Job).outerjoin(JobSkillIndex,JobSkillIndex.job_id==Job.id).where(
-        or_(JobSkillIndex.job_id.is_(None),JobSkillIndex.content_hash!=Job.content_hash))).all()
+    revision=db.get(AnalysisRevision,'skill_index')
+    rebuild=revision is None or revision.version!=SKILL_INDEX_VERSION
+    statement=select(Job)
+    if not rebuild:
+        statement=statement.outerjoin(JobSkillIndex,JobSkillIndex.job_id==Job.id).where(
+            or_(JobSkillIndex.job_id.is_(None),JobSkillIndex.content_hash!=Job.content_hash))
+    stale=db.scalars(statement).all()
     for job in stale:
         text=(job.title or '')+'\n'+(job.body_text or '')
         terms='|'+'|'.join(name.casefold() for name in CATALOG if re.search(skill_pattern(name),text))+'|'
         row=db.get(JobSkillIndex,job.id)
         if row:row.content_hash=job.content_hash;row.terms=terms
         else:db.add(JobSkillIndex(job_id=job.id,content_hash=job.content_hash,terms=terms))
-    if stale:db.commit()
+    if rebuild:db.merge(AnalysisRevision(key='skill_index',version=SKILL_INDEX_VERSION))
+    if stale or rebuild:db.commit()
 
 
 SECTION = re.compile(r"(?i)(자격\s*요건|필수\s*(?:요건|사항|조건)|지원\s*자격|requirements|minimum qualifications|우대\s*(?:사항|조건|요건)|preferred qualifications|nice to have|주요\s*업무|담당\s*업무|responsibilities|복리후생|혜택|채용\s*절차|팀\s*소개|기술\s*스택)")

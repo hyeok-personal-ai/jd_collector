@@ -13,15 +13,16 @@ NON_IT_TITLES = re.compile(r'영업|마케팅|마케터|디자이너|회계|재�
 SENIOR = re.compile(r'시니어|수석|책임|팀장|리드\b|senior|staff\b|principal\b|lead\b|director|head of|manager', re.I)
 JUNIOR = re.compile(r'신입|신입사원|주니어|인턴|인턴십|경력무관|경력 무관|무경력|new grad|new graduate|entry.level|junior|\bintern(?:ship)?\b|early career|graduate program',re.I)
 INTERN = re.compile(r'인턴|\bintern(?:ship)?\b', re.I)
-YEAR_RANGE = re.compile(r'(?:경력\s*)?(\d{1,2})\s*(?:년|years?|yrs?)?\s*[~\-–]\s*(\d{1,2})\s*(?:년|years?|yrs?)',re.I)
+YEAR_RANGE = re.compile(r'(?:경력\s*)?(\d{1,2})\s*(?:년|years?|yrs?)?\s*[~\-–]\s*(\d{1,2})\s*(\+)?\s*(?:년|years?|yrs?)',re.I)
 YEAR_MIN = re.compile(r'(?:경력\s*)?(\d{1,2})\s*(?:년|years?|yrs?)\s*(?:이상|이상의|이상인|부터|\+|or more|experience required|minimum)',re.I)
 YEAR_UPTO = re.compile(r'(?:경력\s*)?(\d{1,2})\s*(?:년|years?|yrs?)\s*(?:이하|미만|까지|or less)',re.I)
 YEAR_PLUS = re.compile(r'(\d{1,2})\s*\+\s*(?:년|years?|yrs?)', re.I)
-EN_MIN = re.compile(r'(?:at least|minimum of|minimum)\s*(\d{1,2})\s*(?:years?|yrs?)',re.I)
+EN_MIN = re.compile(r'(?:at least|minimum of|minimum)\s*(\d{1,2}|one|two|three|four|five|six|seven|eight|nine|ten)\s*(?:years?|yrs?)',re.I)
+NUMBER_WORDS={word:i for i,word in enumerate(('zero','one','two','three','four','five','six','seven','eight','nine','ten'))}
 # Restrict experience extraction to vacancy title and nearby qualification lines.
 EXP_HINT = re.compile(r'경력|경험|experience|years? (?:of |in )|yrs?',re.I)
-LABEL_VERSION = 'career-sections-v2'
-HARDWARE_TITLE = re.compile(r'\bHW\b|하드웨어|회로\s*설계|기구\s*설계|기계\s*설계|센서|신약|제제|레이다|레이더|\bSAR\b', re.I)
+LABEL_VERSION = 'career-sections-v3'
+HARDWARE_TITLE = re.compile(r'\bHW\b|\bhardware\b|하드웨어|회로\s*설계|기구\s*설계|기계\s*설계|센서|신약|제제|레이다|레이더|\bSAR\b', re.I)
 SOFTWARE_TITLE = re.compile(r'소프트웨어|펌웨어|프로그래|\bSW\b|software|firmware|programmer|백엔드|프론트엔드|웹\s*개발|앱\s*개발', re.I)
 CORE_DEVELOPMENT_ROLE = re.compile(r'백엔드|프론트엔드|풀스택|프로그래머|프로그래밍|펌웨어|firmware|programmer|frontend|front.?end|back.?end|full.?stack|웹\s*개발|앱\s*개발|소프트웨어\s*(?:개발|엔지니어)|software\s+(?:engineer|developer)|(?:Java|Python|C\+\+|C#|TypeScript|Kotlin|Swift|React|Node|Flutter|Unity|Unreal)\s*(?:개발|developer|engineer)',re.I)
 NON_SOFTWARE_ROLE = re.compile(r'contents?\s+developer|콘텐츠\s*(?:개발|기획|운영)|작가\s*발굴|프로듀싱|법인장|기술\s*영업|영업\s*마케팅|business\s+develop',re.I)
@@ -83,12 +84,14 @@ def label_job(draft: JobDraft) -> Labels:
     upper = None
     found = YEAR_RANGE.search(experience_text)
     if found:
-        lower, upper = int(found.group(1)), int(found.group(2))
+        lower, upper = int(found.group(1)), None if found.group(3) else int(found.group(2))
         reasons.append('experience_range')
+        if found.group(3):reasons.append('open_upper_experience_range')
     else:
         found = YEAR_MIN.search(experience_text) or EN_MIN.search(experience_text) or YEAR_PLUS.search(experience_text)
         if found:
-            lower = int(found.group(1))
+            value=found.group(1).casefold()
+            lower = int(value) if value.isdecimal() else NUMBER_WORDS[value]
             reasons.append('minimum_years')
         else:
             found = YEAR_UPTO.search(experience_text)

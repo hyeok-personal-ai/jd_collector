@@ -15,8 +15,8 @@ from .locking import FileLock
 from .posting_analysis import structured_analysis, plain_body
 
 MODEL = 'sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2'
-MODEL_KEY = MODEL + ':sections-token100-overlap20-v3'
-REUSABLE_MODEL_KEYS = {MODEL + ':sections-token100-overlap20-v2'}
+MODEL_KEY = MODEL + ':sections-token100-overlap20-v4'
+REUSABLE_MODEL_KEYS = {MODEL + ':sections-token100-overlap20-v2', MODEL + ':sections-token100-overlap20-v3'}
 DIM = 384
 
 
