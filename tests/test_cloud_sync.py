@@ -32,11 +32,17 @@ def factory(tmp_path):
     engine.dispose()
 
 
-def test_import_is_idempotent_and_updates_existing_id(factory):
+def test_import_is_idempotent_and_updates_existing_id(factory,monkeypatch,tmp_path):
+    from app.control import ControlStore
+    monkeypatch.setenv('RADAR_DATA_DIR',str(tmp_path/'control'))
+    control=ControlStore()
     doc = document()
     assert cloud.merge_jobs(doc, factory)['created'] == 1
     with factory() as db:
         original_id = db.scalar(select(Job)).id
+    control.bookmark(original_id,True)
+    control.save_application(original_id,'applied','Synthetic application note')
+    control.save_settings({'max_items':17})
     assert cloud.merge_jobs(doc, factory)['skipped_newer_local'] == 1
     doc['jobs'][0]['checked_at'] = utcnow().isoformat()
     doc['jobs'][0]['job']['source_status'] = 'closed'
@@ -46,6 +52,10 @@ def test_import_is_idempotent_and_updates_existing_id(factory):
         assert job.id == original_id  # Control DB bookmarks continue to reference this row.
         assert job.source_status == 'closed'
         assert db.scalar(select(ListingState)).listing_fingerprint == 'r1'
+    assert control.bookmarks()==[original_id]
+    assert control.applications()[original_id]['note']=='Synthetic application note'
+    assert control.applications()[original_id]['status']=='applied'
+    assert control.settings()['max_items']==17
 
 
 def test_old_snapshot_cannot_overwrite_newer_local_status(factory):

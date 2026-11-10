@@ -150,14 +150,16 @@ def nearest(db,job,conditions=(),limit=10):
     if row is None or row.content_hash!=job.content_hash or row.model!=MODEL_KEY:
         return {'status':'index_pending','coverage':coverage,'items':[]}
     target=np.frombuffer(row.vector,dtype='<f4')
-    statement=select(Job,JobEmbedding).join(JobEmbedding,JobEmbedding.job_id==Job.id).where(
+    # Rank compact vectors first. Loading every full body and chunk matrix made
+    # a query read hundreds of MB although only the top few need evidence.
+    statement=select(Job.id,JobEmbedding.vector).join(JobEmbedding,JobEmbedding.job_id==Job.id).where(
         Job.id!=job.id,JobEmbedding.content_hash==Job.content_hash,JobEmbedding.model==MODEL_KEY,*conditions)
     import heapq
     best=[];examined=0
-    for candidate,embedding in db.execute(statement.execution_options(yield_per=256)):
-        vector=np.frombuffer(embedding.vector,dtype='<f4')
+    for candidate_id,vector_bytes in db.execute(statement.execution_options(yield_per=256)):
+        vector=np.frombuffer(vector_bytes,dtype='<f4')
         score=float(np.dot(target,vector));examined+=1
-        value=(score,candidate.id,candidate,embedding)
+        value=(score,candidate_id)
         if len(best)<limit:heapq.heappush(best,value)
         elif score>best[0][0]:heapq.heapreplace(best,value)
     items=[]
@@ -165,7 +167,10 @@ def nearest(db,job,conditions=(),limit=10):
     from .skill_matching import CATALOG,requirement_mentions
     base=requirement_mentions(job,list(CATALOG))
     base_vectors=np.frombuffer(row.chunk_vectors,dtype='<f4').reshape(-1,DIM)
-    for score,_,candidate,embedding in sorted(best,reverse=True):
+    for score,candidate_id in sorted(best,reverse=True):
+        candidate=db.get(Job,candidate_id)
+        embedding=db.get(JobEmbedding,candidate_id)
+        if not candidate or not embedding or embedding.content_hash!=candidate.content_hash:continue
         other=requirement_mentions(candidate,list(CATALOG))
         shared=sorted(set(base['required']+base['preferred']+base['mentioned']) &
                       set(other['required']+other['preferred']+other['mentioned']))
