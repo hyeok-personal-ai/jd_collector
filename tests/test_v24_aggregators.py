@@ -33,6 +33,37 @@ def test_wp_uses_all_pages_and_recovers_without_refetching_done_pages(tmp_path):
     assert store.summary('inthiswork')['complete']
 
 
+def test_known_flexible_posting_is_rechecked_before_incomplete_pagination(tmp_path):
+    store=AggregateStore(tmp_path/'inventory.sqlite')
+    store.pages('inthiswork',['old-page'])
+    store.save_page('inthiswork','old-page',[{'id':'9','url':post(9)['link'],'revision':'old','payload':post(9)}])
+    store.mark('inthiswork','9','done',active=True,recheck_mode='flexible')
+    with store.db() as db:db.execute("UPDATE aggregate_refs SET checked=1,seen=1 WHERE id='9'")
+    requested=[]
+    class Fetcher:
+        async def get_response(self,url):
+            requested.append(url)
+            if 'page=2&' in url:raise RuntimeError('Temporary listing failure')
+            return SimpleNamespace(text=json.dumps([post(1)]),total=2,total_pages=2)
+        async def get_text(self,url):
+            requested.append(url)
+            row=post(9);row['categories']=[]
+            return json.dumps(row)
+    async def verify():
+        crawler=InThisWorkPublicCrawler(store);fetcher=Fetcher()
+        stream=crawler.discover(fetcher)
+        try:
+            assert (await anext(stream)).external_id=='1'
+            known=await anext(stream)
+            assert known.external_id=='9' and known.payload['refresh']
+            assert not any('page=2&' in url for url in requested)
+            # Closure is confirmed by the detail's recruitment category change.
+            assert (await crawler.parse(fetcher,known)).source_status=='closed'
+            with pytest.raises(RuntimeError,match='Temporary listing'):await anext(stream)
+        finally:await stream.aclose()
+    asyncio.run(verify())
+
+
 def test_wp_changed_total_refreshes_all_pages_and_retires_removed_pages(tmp_path):
     store=AggregateStore(tmp_path/'inventory.sqlite');total=2;requests=[]
     class Fetcher:

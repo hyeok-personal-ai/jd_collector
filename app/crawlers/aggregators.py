@@ -154,6 +154,16 @@ class InThisWorkPublicCrawler(BaseCrawler):
                                  payload={'draft':row['payload'],'refresh':False})
         # Save each accessible page before another request can fail or time out.
         for ref in listed_refs(data):yield ref
+        # Existing flexible/unknown postings must not wait for a perfectly
+        # consistent full list. Verify their own public detail, never infer
+        # closure just because pagination omitted them.
+        reviewed=0
+        for row in s.due(source,10000):
+            if row['id'] in emitted or not started or row['seen']>=started:continue
+            emitted.add(row['id']);reviewed+=1
+            yield JobRef(row['id'],row['url'],listing_fingerprint='availability:'+str(int(started)),
+                         payload={'draft':row['payload'],'refresh':True})
+            if reviewed>=5:break
         pending=set(s.pending_pages(source,10000))
         # Restored SQLite row order can be lexicographic (1,10,11,...,2).
         for url in [u for u in pages if u in pending][:self.max_pages or 10000]:
@@ -168,11 +178,12 @@ class InThisWorkPublicCrawler(BaseCrawler):
         complete_scan=bool(started and not s.pending_pages(source,1) and s.scan_count(source,started)==response.total)
         if complete_scan:
             for row in s.absent(source,started):
+                if row['id'] in emitted:continue
+                emitted.add(row['id'])
                 yield JobRef(row['id'],row['url'],listing_fingerprint='availability:'+str(int(started)),
                              payload={'draft':row['payload'],'refresh':True})
         for row in s.due(source,10000):
             if row['id'] in emitted:continue
-            if started and row['seen']<started and not complete_scan:continue
             refresh=bool(started and row['seen']<started)
             yield JobRef(row['id'],row['url'],listing_fingerprint=('availability:'+str(int(started))) if refresh else row['revision'],
                          payload={'draft':row['payload'],'refresh':refresh})
