@@ -13,6 +13,7 @@ from .control import data_dir, ControlStore
 from .database import Job, JobEmbedding, JobClassification, SessionLocal, init_db, utcnow
 from .locking import FileLock
 from .posting_analysis import structured_analysis, plain_body
+from .posting_sections import extract_sections
 
 MODEL = 'sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2'
 MODEL_KEY = MODEL + ':sections-token100-overlap20-v4'
@@ -46,8 +47,9 @@ def status(phase, **extra):
 
 
 def chunks_for(job, tokenizer):
-    analysis=structured_analysis(job)
-    segments=[j['text'] for k in ('duties','required','preferred') for j in analysis['sections'][k]]
+    # Embedding needs source sections only, not career and technology summaries.
+    sections=extract_sections(job)
+    segments=[j['text'] for k in ('duties','required','preferred') for j in sections[k]]
     if not segments:segments=[plain_body(job)]
     chunks=[job.title]
     for text in segments:
