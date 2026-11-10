@@ -23,8 +23,11 @@ def test_145_targets_five_stages_and_no_auto_crawling():
     report=catalog_report(rows)
     assert report['employer_targets']==145
     assert report['unique_portal_paths']<145
-    assert sum('ats_provider' in r for r in rows)==15
-    assert len(active_boards())==40  # No new unapproved website crawler enabled
+    assert sum('ats_provider' in r for r in rows)==14
+    assert len(active_boards())==38  # Two retired boards disabled; no new crawler enabled
+    companies={r['id']:r for r in rows}
+    assert companies['furiosa']['ats_board']=='furiosaai'
+    assert companies['dunamu']['collection_status']=='link_only_pending_policy_and_adapter'
 
 
 @pytest.mark.parametrize('address,family,adapter',[

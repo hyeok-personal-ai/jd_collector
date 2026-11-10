@@ -26,7 +26,7 @@ from fastapi.responses import Response
 from pydantic import BaseModel, ConfigDict, Field
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from .control import ControlStore
-from .skill_matching import normalize_skills, score_expression, match_details, BACKEND_TITLE, ensure_skill_index
+from .skill_matching import normalize_skills, score_expression, match_details, BACKEND_TITLE, INFRA_TITLE, ensure_skill_index
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
@@ -231,7 +231,7 @@ def job_conditions(*, keyword=None, source_id=None, recruitment_type=None, regio
         conditions.append(Job.title.regexp_match(BACKEND_TITLE))
     elif role:
         patterns={'backend':r'(?i)백엔드|back.?end', 'server':r'(?i)서버|server',
-                  'infra':r'(?i)인프라|infra|devops|sre|클라우드|cloud|플랫폼|platform|시스템|system'}
+                  'infra':INFRA_TITLE}
         conditions.append(Job.title.regexp_match(patterns[role]))
     return conditions
 

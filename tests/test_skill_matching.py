@@ -129,3 +129,15 @@ def test_analysis_counts_postings_not_occurrences_and_labels_sampling():
     assert java['posting_count']==java['required']==java['preferred']==1
     assert data['sampled'] and data['analyzed']==1 and data['total']==1000
     assert data['resume_focus']==['Java']
+
+
+@pytest.mark.parametrize('title,expected',[
+    ('Software Engineer',True),('Cloud Platform Engineer',True),
+    ('에코마케팅|Backend Engineer',True),('Synopsys|Intern (Infrastructure)',True),
+    ('플랫폼 전략/운영 기획 담당',False),('AI 소프트웨어 사업개발 담당자',False),
+    ('경력 변리사 [IT/소프트웨어]',False),('Robot Embedded System Hardware Engineer',False),
+    ('Cloud Sales Engineer',False),('Software Engineer (Frontend)',False),
+])
+def test_role_filter_distinguishes_engineering_from_business_and_embedded(title,expected):
+    from app.skill_matching import BACKEND_TITLE
+    assert bool(re.search(BACKEND_TITLE,title)) is expected

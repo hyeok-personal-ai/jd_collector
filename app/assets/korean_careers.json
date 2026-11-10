@@ -285,15 +285,15 @@
     {
       "id": "furiosa",
       "name": "퓨리오사AI",
-      "url": "https://jobs.ashbyhq.com/furiosa-ai",
+      "url": "https://job-boards.greenhouse.io/furiosaai",
       "priority_stage": 4,
       "source_type": "official_careers",
       "canonical_company": "furiosa",
       "collection_status": "existing_public_ats",
-      "ats_provider": "ashby",
-      "ats_board": "furiosa-ai",
-      "evidence_url": "https://jobs.ashbyhq.com/furiosa-ai",
-      "note": "기존 Greenhouse furiosaai도 있어 같은 회사 교차-ATS 중복 후보 대상"
+      "ats_provider": "greenhouse",
+      "ats_board": "furiosaai",
+      "evidence_url": "https://furiosa.ai/careers",
+      "note": "2026-11-10 Greenhouse live sample verified; old Ashby URL returns 404."
     },
     {
       "id": "friendliai",
@@ -428,15 +428,13 @@
     {
       "id": "dunamu",
       "name": "두나무",
-      "url": "https://job-boards.greenhouse.io/dunamu",
+      "url": "https://dunamu.com/careers/jobs",
       "priority_stage": 4,
       "source_type": "official_careers",
       "canonical_company": "dunamu",
-      "collection_status": "existing_public_ats",
-      "ats_provider": "greenhouse",
-      "ats_board": "dunamu",
-      "evidence_url": "https://job-boards.greenhouse.io/dunamu",
-      "note": ""
+      "collection_status": "link_only_pending_policy_and_adapter",
+      "evidence_url": "https://dunamu.com/careers/jobs",
+      "note": "2026-11-10 old Greenhouse board returns 404; official careers page access unverified (403)."
     },
     {
       "id": "lg_group",

@@ -34,7 +34,9 @@ def test_catalog_stages_and_ref_integrity():
 
 def test_no_custom_sites_automatically_scraped():
     boards=active_boards()
-    assert len(boards)==40
+    assert len(boards)==38
+    assert not {'ashby:furiosa-ai','greenhouse:dunamu'} & {b['key'] for b in boards}
+    assert 'greenhouse:furiosaai' in {b['key'] for b in boards}
     assert not any('naver' in b['key'] or 'kakao' in b['key'] for b in boards)
     assert any(b['key']=='lever:zoyi' for b in boards)
     assert all(b['interval']>0 for b in boards)

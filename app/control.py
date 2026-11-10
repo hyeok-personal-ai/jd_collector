@@ -155,7 +155,14 @@ class ControlStore:
     def claim(self):
         with self.connection() as db:
             db.execute('BEGIN IMMEDIATE')
-            row = db.execute("SELECT * FROM tasks WHERE status='queued' ORDER BY CASE WHEN target_key='inthiswork:all' THEN 0 WHEN target_key='zighang:all' THEN 1 ELSE 2 END,id LIMIT 1").fetchone()
+            # Aggregators lead fresh work, but their endless follow-up batches
+            # must not starve an older company request. After two 120s batch
+            # budgets, waiting tasks receive FIFO priority at the next claim.
+            row = db.execute("""SELECT * FROM tasks WHERE status='queued'
+                ORDER BY CASE WHEN queued_at<=? THEN 0
+                    WHEN target_key='inthiswork:all' THEN 1
+                    WHEN target_key='zighang:all' THEN 2 ELSE 3 END,id LIMIT 1""",
+                (time.time()-240,)).fetchone()
             if row is None:
                 return None
             db.execute("UPDATE tasks SET status='running',started_at=?,finished_at=NULL,error=NULL,run_id=NULL,attempts=attempts+1 WHERE id=?", (time.time(), row['id']))

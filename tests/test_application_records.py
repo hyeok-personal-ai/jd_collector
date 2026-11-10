@@ -54,3 +54,26 @@ def test_label_revision_backfills_once_without_changing_application_identity(cli
         assert client.get(f'/api/jobs/{identifier}/application').json()['note']=='Synthetic retained note'
         assert client.get('/api/jobs').json()['total']==4
     finally:session.close()
+
+
+def test_backend_filter_excludes_explicit_other_roles_but_keeps_combined_roles(client):
+    from app import api
+    from app.database import get_session
+    from app.repository import upsert_job
+    from app.schema import JobDraft
+    session=api.app.dependency_overrides[get_session]();db=next(session)
+    titles=['Software Engineer, Frontend','AI 플랫폼 프론트엔드 엔지니어',
+            'Software Test Engineer (SQA)','Full Stack (Frontend/Backend)',
+            'Backend Developer and Data Engineer','[Example Cloud] Data Engineer Junior']
+    try:
+        for i,title in enumerate(titles):
+            upsert_job(db,JobDraft(source_id='demo',external_id=f'roles-{i}',title=title,original_url=f'https://example.org/roles/{i}'))
+        db.commit()
+        result=client.get('/api/jobs?role=backend_infra').json()
+        found={j['title'] for j in result['items']}
+        assert set(titles[3:5])<=found
+        assert not set(titles[:3]+titles[5:])&found
+        assert client.get('/api/jobs').json()['total']==10
+        infra=client.get('/api/jobs?role=infra').json()['items']
+        assert not any(j['title'] in (titles[1],titles[5]) for j in infra)
+    finally:session.close()

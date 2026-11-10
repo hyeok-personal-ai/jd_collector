@@ -71,8 +71,11 @@
       "id": "furiosa-ai",
       "company": "FuriosaAI",
       "evidence": "https://jobs.ashbyhq.com/furiosa-ai/11eafd2e-d89b-4c61-bb64-b38cf0748536",
-      "confidence": "public_page_found",
-      "focus": "kr_it"
+      "confidence": "live_http_404",
+      "focus": "kr_it",
+      "enabled": false,
+      "checked_on": "2026-11-10",
+      "note": "Retired Ashby URL; use verified greenhouse/furiosaai."
     },
     {
       "provider": "ashby",
@@ -162,8 +165,10 @@
       "company": "두나무 (Dunamu)",
       "evidence": "https://job-boards.greenhouse.io/dunamu/jobs/5536857004",
       "focus": "kr_it",
-      "confidence": "public_page_found",
-      "enabled": true
+      "confidence": "live_http_404",
+      "enabled": false,
+      "checked_on": "2026-11-10",
+      "note": "Old Greenhouse board returns 404. Official careers page requires access review; no closure inferred."
     },
     {
       "provider": "greenhouse",

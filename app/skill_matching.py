@@ -22,7 +22,14 @@ CATALOG = {
     'C++':['c++'], 'C#':['c#'], 'Django':['django','장고'], 'FastAPI':['fastapi'],
 }
 ALIASES={alias.casefold():name for name,aliases in CATALOG.items() for alias in [name,*aliases]}
-BACKEND_TITLE=r'(?i)백엔드|back[ -]?end|서버|server|인프라|infra|devops|\bsre\b|플랫폼|platform|클라우드|cloud|시스템|system|풀스택|full[ -]?stack|소프트웨어|software'
+BACKEND_CORE=r'백엔드|back[ -]?end|서버|server|인프라|infra|devops|\bsre\b|풀스택|full[ -]?stack'
+OTHER_ROLE=r'프론트엔드|front[ -]?end|모바일|mobile|\bandroid\b|\bios\b|\b[sw]?qa\b|quality assurance|테스트\s*엔지니어|data\s*engineer|데이터\s*엔지니어|compiler|컴파일러|코덱|graphics|그래픽|embedded|임베디드|hardware|하드웨어|firmware|펌웨어'
+NON_ENGINEERING=r'변리사|사업개발|사업\s*개발|기획|마케팅|영업|sales|marketing|business development|recruiter|디자이너|designer'
+ENGINEERING=r'개발|엔지니어|engineer|developer|devops|\bsre\b|administrator|관리자'
+# Generic software/platform titles remain candidates, but an explicit frontend,
+# mobile, QA or data role must not match solely through "software"/"platform".
+BACKEND_TITLE=rf'(?i)^(?:[^|]*\|)?(?!.*(?:{NON_ENGINEERING}))(?:(?:.*(?:{BACKEND_CORE}))|(?!(?:.*(?:{OTHER_ROLE})))(?=.*(?:{ENGINEERING})).*(?:플랫폼|platform|클라우드|cloud|시스템|system|소프트웨어|software))'
+INFRA_TITLE=rf'(?i)^(?:[^|]*\|)?(?!.*(?:{NON_ENGINEERING}))(?:(?:.*(?:인프라|infra|devops|\bsre\b))|(?!(?:.*(?:{OTHER_ROLE})))(?=.*(?:{ENGINEERING})).*(?:클라우드|cloud|플랫폼|platform|시스템|system))'
 
 
 def normalize_skills(raw):

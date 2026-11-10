@@ -11,6 +11,23 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.control import ControlStore
+
+
+def test_continuous_aggregate_batches_do_not_starve_company_requests(tmp_path,monkeypatch):
+    now=[1000.0]
+    monkeypatch.setattr('app.control.time.time',lambda:now[0])
+    store=ControlStore(tmp_path/'fair-queue.sqlite');store.sync_catalog()
+    company='greenhouse:furiosaai'
+    store.enqueue([company,'zighang:all','inthiswork:all'])
+    first=store.claim()
+    assert first['target_key']=='inthiswork:all'
+    store.finish(first,status='completed')
+    second=store.claim()
+    assert second['target_key']=='zighang:all'
+    store.finish(second,status='limited')
+    now[0]+=241
+    store.enqueue(['zighang:all','inthiswork:all'])
+    assert store.claim()['target_key']==company
 from app.database import Base, Job, JobClassification, RawPosting, get_session
 from app.normalization import clean_draft
 from app.job_labels import label_job
