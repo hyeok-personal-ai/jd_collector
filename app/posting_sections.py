@@ -5,7 +5,7 @@ from bs4 import BeautifulSoup
 HEADINGS = {
     'duties':r'주요\s*업무|담당\s*업무|수행\s*업무|업무\s*내용|(?:key\s+|main\s+|roles and\s+)?responsibilities(?: and opportunities)?|what you(?:.ll| will) do|your impact|이런\s*일을\s*(?:해요|합니다)|합류하면\s*함께할\s*업무예요',
     'required':r'자격\s*요건(?:\s*및\s*기술)?|지원\s*자격|필수(?:\s*(?:요건|사항|조건))?|requirements?|(?:(?:minimum|basic|required|key)\s+)?qualifications|your (?:skills and qualifications|qualifications and skills)|what we.re looking for|how do i know if the role is right for me\??|必須条件|이런\s*분(?:을\s*찾(?:고\s*있(?:어요|습니다)|습니다|아요)|과\s*함께하고\s*싶어요)',
-    'preferred':r'helpful experience(?:\s*\(not required\))?|우대(?:\s*(?:사항|조건|요건))?|(?:preferred|ideal) (?:qualifications|skills|experience)|nice[ -]to[ -]have|plus if you have|이런\s*경험이\s*있으면\s*더\s*좋습니다|이런\s*분(?:이면|이라면)\s*더\s*(?:좋아요|좋습니다)',
+    'preferred':r'helpful experience(?:\s*\(not required\))?|우대(?:\s*(?:사항|조건|요건))?|(?:preferred|ideal) (?:qualifications|skills|experience)|nice[ -]to[ -]have|plus if you have|이런\s*분이면\s*더더욱\s*환영해요|이런\s*경험이\s*있으면\s*더\s*좋습니다|이런\s*분(?:이면|이라면)\s*더\s*(?:좋아요|좋습니다)',
     'conditions':r'life\s*&\s*benefits?|근무\s*(?:조건|환경|형태|장소)|고용\s*형태|복리\s*후생|혜택(?:\s*및\s*복지)?|보상(?:과\s*복리후생)?|benefits(?: and perks)?|work conditions|supporting your best work and your best life',
     'other':r'joining process|소개(?=\s*$)|함께\s*배우게\s*될\s*기술|함께\s*일하고\s*싶은\s*분|채용\s*절차|전형\s*절차|지원\s*방법|지원하러\s*가기|회사\s*소개|팀\s*소개|기술\s*스택|채용\s*과정|참고\s*사항|참고해\s*주세요|이렇게\s*합류해요|합류\s*여정|꼭\s*확인해\s*주세요|about (?:you|us|the role)|our team|how to apply|hiring process|why join\b[^\n]{0,80}|contact|culture|your growth|inclusion and diversity|what you.ll grow into|additional resources|[a-z]+ values(?=\s*[:：]?\s*$)',
 }
@@ -23,7 +23,7 @@ FLAT_HEADING=re.compile(r'(?i)(?<!\S)(?:'+'|'.join(
     f'(?P<{key}>{value})' for key,value in FLAT_HEADINGS.items())+r')(?![a-z가-힣])[ \t!：:]*')
 COLON_HEADING=re.compile(r'(?i)(?<!\S)(?:'+'|'.join(
     f'(?P<{key}>{value})' for key,value in HEADINGS.items())+r')[ \t]*[:：][ \t]*')
-NON_REQUIRED=re.compile(r'필수(?:사항|조건|요건)?(?:이|가|는)?\s*(?:아니|아님|없)|not\s+(?:strictly\s+)?required|(?:언어|프레임워크)[^\n()]{0,24}(?:제약\s*없|무관)|제약\s*없음',re.I)
+NON_REQUIRED=re.compile(r'(?:경력|학력)(?:과|와|은|는|[·ㆍ/\s])*(?:경력|학력)?(?:은|는)?\s*무관|필수(?:사항|조건|요건)?(?:이|가|는)?\s*(?:아니|아님|없)|not\s+(?:strictly\s+)?required|(?:언어|프레임워크)[^\n()]{0,24}(?:제약\s*없|무관)|제약\s*없음',re.I)
 
 
 def plain_text(raw):

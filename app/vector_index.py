@@ -16,8 +16,8 @@ from .posting_analysis import structured_analysis, plain_body
 from .posting_sections import extract_sections
 
 MODEL = 'sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2'
-MODEL_KEY = MODEL + ':sections-token100-overlap20-v9'
-REUSABLE_MODEL_KEYS = {MODEL + ':sections-token100-overlap20-v8', MODEL + ':sections-token100-overlap20-v2', MODEL + ':sections-token100-overlap20-v3', MODEL + ':sections-token100-overlap20-v4', MODEL + ':sections-token100-overlap20-v5', MODEL + ':sections-token100-overlap20-v6', MODEL + ':sections-token100-overlap20-v7'}
+MODEL_KEY = MODEL + ':sections-token100-overlap20-v10'
+REUSABLE_MODEL_KEYS = {MODEL + ':sections-token100-overlap20-v9', MODEL + ':sections-token100-overlap20-v8', MODEL + ':sections-token100-overlap20-v2', MODEL + ':sections-token100-overlap20-v3', MODEL + ':sections-token100-overlap20-v4', MODEL + ':sections-token100-overlap20-v5', MODEL + ':sections-token100-overlap20-v6', MODEL + ':sections-token100-overlap20-v7'}
 DIM = 384
 
 

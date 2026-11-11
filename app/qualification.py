@@ -236,7 +236,10 @@ def improvement(assessment, passages=None):
         if not evidence and passages is not None:
             evidence = find_evidence(topic[1], passages)
     location = (f"{evidence[0]['document_title']}" + (f" {evidence[0]['page']}쪽" if evidence[0]['page'] else '')) if evidence else '관련 프로젝트 항목'
-    if assessment['hard_condition']:
+    if assessment['state'] == 'optional':
+        resume = '원문이 제한을 두지 않는 조건입니다. 이 항목을 충족하기 위한 보완은 필요하지 않습니다.'
+        portfolio = resume
+    elif assessment['hard_condition']:
         resume = '경력·학력·근무 가능 여부를 사실대로 명시하고 공고의 인정 범위를 확인하세요. 프로젝트 기간을 재직 기간으로 바꾸지 마세요.'
         portfolio = '작품 설명만으로 경력·학위·자격 제한을 해소할 수 없습니다. 해당 자격의 별도 증빙이 있는지 확인하세요.'
     elif topic:

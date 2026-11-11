@@ -165,3 +165,12 @@ def test_repository_url_does_not_prove_git_collaboration():
     row = assess('Git 활용 경험', 'AWS 서버 배포와 테스트 환경을 구축했습니다.\n링크: https://github.com/example/project')
     assert row['state']=='unknown' and not row['evidence']
     assert assess('Git 활용 경험', 'Git 브랜치와 PR 리뷰로 API 변경을 관리했습니다.')['state']=='supported'
+
+
+def test_welcome_heading_and_unrestricted_career_are_not_mandatory():
+    from app.qualification import improvement
+    a=structured_analysis(sample(body_text='자격요건\n경력과 학력은 무관합니다.\nPython 개발 경험\n이런 분이면 더더욱 환영해요\n오픈소스 기여 경험'))
+    assert [r['text'] for r in a['sections']['preferred']] == ['오픈소스 기여 경험']
+    row=assess_requirement(a['sections']['required'][0], 'required', document_passages(documents('Java API를 구현했습니다.')))
+    assert row['state']=='optional'
+    assert '보완은 필요하지 않습니다' in improvement(row)['resume_action']

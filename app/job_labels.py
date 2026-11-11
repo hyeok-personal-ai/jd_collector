@@ -21,7 +21,7 @@ EN_MIN = re.compile(r'(?:at least|minimum of|minimum)\s*(\d{1,2}|one|two|three|f
 NUMBER_WORDS={word:i for i,word in enumerate(('zero','one','two','three','four','five','six','seven','eight','nine','ten'))}
 # Restrict experience extraction to vacancy title and nearby qualification lines.
 EXP_HINT = re.compile(r'경력|경험|experience|years? (?:of |in )|yrs?',re.I)
-LABEL_VERSION = 'career-sections-v8'
+LABEL_VERSION = 'career-sections-v9'
 HARDWARE_TITLE = re.compile(r'\bHW\b|\bhardware\b|하드웨어|회로\s*설계|기구\s*설계|기계\s*설계|센서|신약|제제|레이다|레이더|\bSAR\b', re.I)
 SOFTWARE_TITLE = re.compile(r'소프트웨어|펌웨어|프로그래|\bSW\b|software|firmware|programmer|백엔드|프론트엔드|웹\s*개발|앱\s*개발', re.I)
 CORE_DEVELOPMENT_ROLE = re.compile(r'백엔드|프론트엔드|풀스택|프로그래머|프로그래밍|펌웨어|firmware|programmer|frontend|front.?end|back.?end|full.?stack|웹\s*개발|앱\s*개발|소프트웨어\s*(?:개발|엔지니어)|software\s+(?:engineer|developer)|(?:Java|Python|C\+\+|C#|TypeScript|Kotlin|Swift|React|Node|Flutter|Unity|Unreal)\s*(?:개발|developer|engineer)',re.I)

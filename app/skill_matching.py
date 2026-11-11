@@ -5,7 +5,7 @@ from functools import lru_cache
 from sqlalchemy import case, func, select, exists, or_
 from .database import Job, JobSkillIndex, AnalysisRevision
 
-SKILL_INDEX_VERSION='technology-mentions-v7'
+SKILL_INDEX_VERSION='technology-mentions-v8'
 
 CATALOG = {
     'Python': ['python','파이썬'], 'Java':['java','자바'],
