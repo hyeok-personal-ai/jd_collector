@@ -26,7 +26,7 @@ TERMS = {**{name: skill_pattern(name) for name in CATALOG}, **EXTRA_TERMS}
 FAMILY = {'RDBMS': r'RDBMS|관계형|MySQL|PostgreSQL|Oracle|MariaDB|외래\s*키|foreign key',
           'ORM': r'\bORM\b|JPA|Hibernate|TypeORM|Prisma',
           'SQL': r'\bSQL\b|쿼리|query', 'Git': r'\bGit(?:Hub)?\b|\bPR\s*#?\d|깃허브'}
-ACTION = re.compile(r'(?:구현|개발|설계|구축|배포|검증|테스트|수정|개선|적용|분리|구성|처리|작성|담당|활용|사용|운영)(?:했|하였|하고|하여|한\s|하는|해\s|합니다)|(?:API|서버|기능|환경|테스트|캐시|관계|아키텍처|아키텍쳐|모델링)[^\n]{0,60}(?:구현|설계|구축|작성|개선)(?:\s|$)|built|implemented|developed|designed|tested|deployed', re.I)
+ACTION = re.compile(r'(?:구현|개발|설계|구축|배포|검증|테스트|수정|개선|적용|분리|구성|처리|작성|담당|활용|사용|운영|관리|리뷰)(?:했|하였|하고|하여|한\s|하는|해\s|합니다)|(?:API|서버|기능|환경|테스트|캐시|관계|아키텍처|아키텍쳐|모델링)[^\n]{0,60}(?:구현|설계|구축|작성|개선)(?:\s|$)|built|implemented|developed|designed|tested|deployed', re.I)
 UNPROVEN = re.compile(r'경험(?:이|은|도)?\s*없|사용해\s*보지|구현하지\s*않|구성\s*없이|미구현|학습\s*예정|배울\s*예정|도입\s*예정|계획(?:입니다|하고)|no experience|not implemented|plan to|want to|yet to', re.I)
 LIMITATION = re.compile(r'아직|한계|남아|남았|필요합니다|예비\s*측정|조건별\s*1회|각각\s*한\s*번|보장하지|포함하지|추가\s*(?:측정|검증)|로컬', re.I)
 HARD = re.compile(r'제출|첨부|실무|상용|산업기능|전문연구|병역|비자|취업\s*자격|재학|졸업|학사|석사|박사|학위|전공|영어|영문|어학|TOEIC|TOEFL|출근|거주|근무\s*가능|professional|commercial|production experience|degree|bachelor|master|ph\.?d|fluent|visa|work authorization', re.I)
@@ -104,7 +104,9 @@ def find_evidence(pattern, passages, *, action=True, context=None):
         # Stack lists and project headings are mentions, even if a neighbouring
         # line happens to contain an action about an unrelated implementation.
         substantive = '\n'.join(line for line in text.splitlines() if not re.search(
-            r'^\s*(?:활용\s*기술|기술\s*[·:：]|Back-End:|Database:|DevOps:)|^[^\n]*\s[·/]\s[^\n]*\s[·/]\s', line, re.I)) if action else text
+            r'^\s*(?:활용\s*기술|기술\s*[·:：]|Back-End\s*[:：]|Database\s*[:：]|DevOps\s*[:：]|Collaboration\s*Tool\s*[:：]|Tech(?:nology)?\s*Stack\s*[:：])|^[^\n]*\s[·/]\s[^\n]*\s[·/]\s', line, re.I)) if action else text
+        if action:
+            substantive = re.sub(r'https?://\S+', '', substantive)
         if not re.search(pattern, substantive, re.I) or UNPROVEN.search(text):
             continue
         if action and not ACTION.search(substantive):

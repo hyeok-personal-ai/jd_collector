@@ -149,3 +149,19 @@ def test_guidance_uses_evidence_for_its_own_topic():
     advice = improvement(row, relevant)
     assert advice['evidence'] and advice['evidence'][0]['page'] == 2
     assert '2쪽' in advice['resume_action']
+
+
+def test_collaboration_stack_does_not_borrow_framework_action():
+    row = assess('Git 활용 경험', 'CollaborationTool: GitHub, Figma, Notion\nJava Spring과 Django 프레임워크를 활용했습니다.')
+    assert row['state']=='unknown' and not row['evidence']
+
+
+def test_decorated_preferred_heading_is_not_a_requirement():
+    a = structured_analysis(sample(body_text='자격요건\nJava 개발 경험\n【 이런 경험이 있으면 더 좋습니다 】\nAWS 배포 경험'))
+    assert [r['text'] for r in a['sections']['preferred']] == ['AWS 배포 경험']
+
+
+def test_repository_url_does_not_prove_git_collaboration():
+    row = assess('Git 활용 경험', 'AWS 서버 배포와 테스트 환경을 구축했습니다.\n링크: https://github.com/example/project')
+    assert row['state']=='unknown' and not row['evidence']
+    assert assess('Git 활용 경험', 'Git 브랜치와 PR 리뷰로 API 변경을 관리했습니다.')['state']=='supported'
