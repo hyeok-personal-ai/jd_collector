@@ -57,7 +57,7 @@ async def lifespan(_app: FastAPI):
             await asyncio.gather(vector_worker, return_exceptions=True)
 
 
-app = FastAPI(title="Recruit Radar", version="2.7.0", lifespan=lifespan)
+app = FastAPI(title="Recruit Radar", version="2.8.0", lifespan=lifespan)
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=['localhost', '127.0.0.1', '[::1]', 'testserver'])
 
 
@@ -70,7 +70,7 @@ async def local_write_guard(request: Request, call_next):
     return await call_next(request)
 SessionDep = Annotated[Session, Depends(get_session)]
 ApplicationStatus = Literal['none','planned','applied','interview','offer','rejected','withdrawn']
-RoleFilter = Literal['','backend_infra','backend','server','infra']
+RoleFilter = Literal['','backend_infra','backend_server','backend','server','infra']
 EmploymentFilter = Literal['','full_time','contract','intern','part_time','unknown']
 
 
@@ -230,7 +230,7 @@ def job_conditions(*, keyword=None, source_id=None, recruitment_type=None, regio
     if role=="backend_infra":
         conditions.append(Job.title.regexp_match(BACKEND_TITLE))
     elif role:
-        patterns={'backend':r'(?i)백엔드|back.?end', 'server':r'(?i)서버|server',
+        patterns={'backend_server':r'(?i)백엔드|back.?end|서버|server', 'backend':r'(?i)백엔드|back.?end', 'server':r'(?i)서버|server',
                   'infra':INFRA_TITLE}
         conditions.append(Job.title.regexp_match(patterns[role]))
     return conditions
@@ -752,6 +752,23 @@ class RecommendationInput(BaseModel):
     limit: int = Field(20,ge=1,le=50)
 
 
+class CandidateFactsInput(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    professional_months: int | None = Field(None,ge=0,le=720,strict=True)
+
+
+@app.get('/api/candidate-facts')
+def get_candidate_facts():
+    from .experience import ExperienceStore
+    return ExperienceStore().candidate_facts()
+
+
+@app.put('/api/candidate-facts')
+def save_candidate_facts(body:CandidateFactsInput):
+    from .experience import ExperienceStore
+    return ExperienceStore().save_candidate_facts(body.professional_months)
+
+
 @app.post('/api/recommendations')
 def recommend_documents(body:RecommendationInput,db:SessionDep):
     from .experience import recommend
@@ -759,9 +776,16 @@ def recommend_documents(body:RecommendationInput,db:SessionDep):
     except ValueError as exc:raise HTTPException(422,str(exc))
 
 
+@app.post('/api/recommendations/compare')
+def compare_document_variants(body:RecommendationInput,db:SessionDep):
+    from .experience import compare_variants
+    try:return compare_variants(db,body.document_ids,body.filters.conditions(db),body.limit)
+    except ValueError as exc:raise HTTPException(422,str(exc))
+
+
 class ReportInput(BaseModel):
     model_config = ConfigDict(extra='forbid')
-    kind: Literal['posting','market','experience'] = 'posting'
+    kind: Literal['posting','market','experience','variants'] = 'posting'
     format: Literal['md','html','pdf'] = 'html'
     ids: list[int] = Field(default_factory=list,max_length=4)
     document_ids: list[int] = Field(default_factory=list,max_length=20)
@@ -787,6 +811,11 @@ def export_report(body:ReportInput,db:SessionDep):
             data=summarize_jobs(jobs,normalize_skills(body.filters.skills),total)
             import json
             blocks=reports.market_report(data,json.dumps(body.filters.model_dump(),ensure_ascii=False))
+        elif body.kind=='variants':
+            from .experience import compare_variants
+            data=compare_variants(db,body.document_ids,body.filters.conditions(db),body.limit)
+            if data['status']!='ready':raise HTTPException(409,'문서 색인이 끝난 뒤 다시 시도하세요.')
+            blocks=reports.variants_report(data)
         else:
             from .experience import recommend
             data=recommend(db,body.document_ids,body.filters.conditions(db),body.limit)

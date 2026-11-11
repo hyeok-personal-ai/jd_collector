@@ -14,6 +14,8 @@ def posting_report(analyses):
         blocks += [('h2', item['title']), ('p', item['organization'] or '회사 미확인'), ('link', item['source_url'])]
         c = item['conditions']
         blocks += [('p', '근무지: ' + (c['region'] or '미확인') + ' / 마감: ' + (c['deadline_on'] or c['deadline_text'] or '미확인'))]
+        for warning in item.get('quality_warnings', []):
+            blocks += [('h3','원문 확인 필요'), ('p',warning['message']), ('quote',warning['evidence'])]
         for label, key in [('담당 업무', 'duties'), ('필수·자격요건', 'required'), ('우대사항', 'preferred'), ('근무 조건·혜택', 'conditions')]:
             blocks.append(('h3', label))
             blocks += [('quote', row['text']) for row in item['sections'][key]] or [('p', '원문에서 구역을 확인하지 못했습니다.')]
@@ -48,6 +50,54 @@ def experience_report(data):
                        ('p', pair['document_title']), ('quote', pair['text']), ('p', f"문장 유사도: {pair['similarity']:.4f}")]
         for guide in item['guidance']:
             blocks += [('h3', '지원 문서 보완 확인'), ('quote', guide['requirement']), ('p', guide['action'])]
+    return blocks
+
+
+def variants_report(data):
+    blocks = [('title', '문서 유형별 지원 우선순위 비교'), ('p', data['note']),
+              ('p', '분석 시각: ' + datetime.now(ZoneInfo('Asia/Seoul')).isoformat(timespec='seconds')),
+              ('p', f"동일 후보 {data['eligible']}건 / 비교 {data['compared']}건 / 미색인 또는 변경 중 {data['unindexed']}건")]
+    facts = data.get('candidate_facts', {})
+    blocks.append(('p', '사용자 확인 백엔드 실무 경력: ' + (f"{facts['professional_months']}개월" if facts.get('professional_months') is not None else '미확인') + ' (교육·사이드 프로젝트 제외)'))
+    for variant in data['variants']:
+        blocks.append(('p', variant['variant'] + ': ' + ' · '.join(f'{k} {v}건' for k, v in variant['counts'].items())))
+    for doc in data['documents']:
+        blocks.append(('p', f"입력 문서: {doc['variant']} / {doc['title']} / SHA-256 {doc.get('content_hash', '미확인')}"))
+    for item in data['items']:
+        job = item['job']
+        blocks += [('h2', job['title']), ('p', job.get('organization') or '회사 미확인'),
+                   ('link', job['original_url']),
+                   ('p', f"{item['priority']} · {item.get('selection_label', item['best_variant'])}"),
+                   ('p', item['best_variant_reason']),
+                   ('p', '마감: ' + str(job.get('deadline_on') or job.get('deadline_text') or '미확인')),
+                   ('p', '마지막 수집: ' + str(job.get('last_seen_at') or '미확인') + ' / 현재 모집 여부는 원문 확인 필요')]
+        blocks.append(('p', '공고 SHA-256: ' + str(item['analysis']['provenance']['content_hash'])))
+        for warning in item['analysis'].get('quality_warnings', []):
+            blocks += [('h3','원문 확인 필요'), ('p',warning['message']), ('quote',warning['evidence'])]
+        for variant in item['variants']:
+            a = variant['assessment']
+            counts = a['required_counts']
+            blocks += [('h3', variant['variant']), ('p', f"{a['priority']} · 유형 내 {variant['rank']}위 · 유사도 {variant['similarity']:.4f}"),
+                       ('p', f"필수 근거 {counts['supported']} · 불일치 {counts['mismatch']} · 미확인 {counts['unknown']} · 이력서 근거 {a['resume_supported']}"),
+                       ('p', a['priority_reason'])]
+            if variant.get('distinct_evidence'):
+                blocks.append(('p','이 유형에서만 확인한 근거: '+' / '.join(variant['distinct_evidence'])))
+            if variant.get('evidence_in_other_versions'):
+                blocks.append(('p','다른 유형에는 근거가 있는 조건: '+' / '.join(variant['evidence_in_other_versions'])+'. 실제 경험과 버전 차이를 확인하세요.'))
+        best = next(v['assessment'] for v in item['variants'] if v['variant'] == item['best_variant'])
+        blocks.append(('h3', '추천 문서의 필수 조건 상세'))
+        for row in best['requirements']:
+            if row['category'] != 'required':
+                continue
+            blocks += [('quote', row['requirement']), ('p', row['label'] + ': ' + row['reason'])]
+            for e in row['evidence']:
+                label = '판정 근거: ' if row['state'] == 'supported' else '관련 문서 (충족 판정 아님): '
+                blocks += [('p', label + e['document_title'] + (f" {e['page']}쪽" if e['page'] else '')), ('quote', e['text'])]
+        blocks.append(('h3','추천 문서 보완 계획 - 필수 전체와 우대 3개'))
+        guides = [g for g in best['guidance'] if g['category']=='required'] + [g for g in best['guidance'] if g['category']=='preferred'][:3]
+        for g in guides:
+            blocks += [('h3', '문서 보완: ' + g['requirement']),
+                       ('p', '이력서: ' + g['resume_action']), ('p', '포트폴리오: ' + g['portfolio_action'])]
     return blocks
 
 
@@ -114,10 +164,10 @@ def pdf_report(blocks):
         size = {'title': 22, 'h2': 16, 'h3': 12}.get(kind, 10)
         style = ParagraphStyle(kind, fontName=font, fontSize=size, leading=size*1.5, wordWrap='CJK',
             textColor=HexColor('#243238'), spaceBefore=12 if kind.startswith('h') else 0,
-            keepWithNext=kind in ('title', 'h2', 'h3'), splitLongWords=True,
+            spaceAfter=5, keepWithNext=kind in ('title', 'h2', 'h3') or str(value).startswith('이력서: '), splitLongWords=True,
             leftIndent=12 if kind == 'quote' else 0)
         text = escape(str(value)).replace('\n', '<br/>')
-        story += [Paragraph(text, style), Spacer(1, 5)]
+        story.append(Paragraph(text, style))
     def footer(canvas, document):
         canvas.setFont(font, 8)
         canvas.drawRightString(A4[0]-44, 24, str(document.page))

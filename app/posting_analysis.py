@@ -4,6 +4,28 @@ from .job_labels import label_job, experience_lines, EXP_HINT, JUNIOR, SENIOR
 from .skill_matching import CATALOG, requirement_mentions
 
 from .posting_sections import plain_body, extract_sections
+import re
+from datetime import date
+
+
+def quality_warnings(job, sections):
+    raw = plain_body(job)
+    warnings = []
+    if job.deadline_on:
+        for match in re.finditer(r'[^\r\n]*(?:접수\s*기간|지원\s*기간|마감\s*일|접수\s*마감)[^\r\n]*', raw):
+            dates = []
+            for value in re.finditer(r'(20\d{2})\s*[년./-]\s*(\d{1,2})\s*[월./-]\s*(\d{1,2})\s*일?', match.group()):
+                try: dates.append(date(*map(int, value.groups())))
+                except ValueError: continue
+            if dates and dates[-1] != job.deadline_on:
+                warnings.append({'code':'deadline_conflict', 'message':f'저장 마감일 {job.deadline_on}과 본문의 접수 기한 {dates[-1]}이 다릅니다. 지원 페이지에서 확인하세요.',
+                    'evidence':match.group(), 'start':match.start(), 'end':match.end(), 'source_url':job.original_url})
+    for row in sections['duties']:
+        if re.search(r'(?:경험자|이해\s*보유자|경험\s*보유자)(?:\s*\([^\n]*\))?\s*$', row['text']):
+            warnings.append({'code':'qualification_in_duties',
+                'message':'담당 업무 구역에 지원자 자격 표현이 있습니다. 별도 필수 조건인지 원문에서 확인하세요.',
+                'evidence':row['text'], 'start':row['start'], 'end':row['end'], 'source_url':job.original_url})
+    return warnings
 
 
 def structured_analysis(job):
@@ -21,7 +43,12 @@ def structured_analysis(job):
                           'deadline_on':str(job.deadline_on) if job.deadline_on else None,
                           'deadline_text':job.deadline_text,'source_status':job.source_status},
             'missing_sections':[k for k in ('duties','required','preferred','conditions') if not sections[k]],
-            'method':'extractive_sections_v4',
+            'quality_warnings':quality_warnings(job,sections),
+            'method':'extractive_sections_v6',
+            'provenance':{'content_hash':getattr(job,'content_hash',None),
+                          'last_seen_at':str(getattr(job,'last_seen_at','') or ''),
+                          'updated_at':str(getattr(job,'updated_at','') or ''),
+                          'basis':'수집 원문. 마지막 수집 시각은 실시간 모집 상태 확인을 보장하지 않습니다.'},
             'note':'원문 구역·표현에서 추출했습니다. 미기재는 조건 없음이 아니며, 대안 조건은 원문 전체를 확인하세요.'}
 
 

@@ -16,8 +16,8 @@ from .posting_analysis import structured_analysis, plain_body
 from .posting_sections import extract_sections
 
 MODEL = 'sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2'
-MODEL_KEY = MODEL + ':sections-token100-overlap20-v5'
-REUSABLE_MODEL_KEYS = {MODEL + ':sections-token100-overlap20-v2', MODEL + ':sections-token100-overlap20-v3', MODEL + ':sections-token100-overlap20-v4'}
+MODEL_KEY = MODEL + ':sections-token100-overlap20-v8'
+REUSABLE_MODEL_KEYS = {MODEL + ':sections-token100-overlap20-v2', MODEL + ':sections-token100-overlap20-v3', MODEL + ':sections-token100-overlap20-v4', MODEL + ':sections-token100-overlap20-v5', MODEL + ':sections-token100-overlap20-v6', MODEL + ':sections-token100-overlap20-v7'}
 DIM = 384
 
 
@@ -86,25 +86,33 @@ def build_batch(model, tokenizer, factory=SessionLocal, limit=16):
                         .where(stale_condition()).order_by(
                             case(((Job.source_status=='open') & development,0),else_=1),
                             case((Job.source_status=='closed',1),else_=0),Job.updated_at.desc()).limit(limit)).all()
+        previous_rows = {row.job_id: row for row in db.scalars(select(JobEmbedding).where(JobEmbedding.job_id.in_([j.id for j in jobs])))}
         db.expunge_all()
+    if jobs:
+        status('indexing',job_id=jobs[0].id,batch_size=len(jobs))
+    derived = []
+    heartbeat = time.monotonic()
     for job in jobs:
-        status('indexing',job_id=job.id,batch_size=len(jobs))
+        if time.monotonic()-heartbeat > 20:
+            status('indexing',job_id=job.id,batch_size=len(jobs)); heartbeat=time.monotonic()
         chunks=chunks_for(job,tokenizer)
-        with factory() as db:
-            previous=db.get(JobEmbedding,job.id)
-            if previous:db.expunge(previous)
+        previous = previous_rows.get(job.id)
         # Parser-only revisions can retain the exact same model input. Reuse
         # those vectors; changed chunks still require genuine re-embedding.
         if (previous and previous.model in REUSABLE_MODEL_KEYS and
                 previous.content_hash==job.content_hash and previous.chunks==chunks):
             row=previous;row.model=MODEL_KEY;row.updated_at=utcnow()
         else:row=encode_job(job,model,tokenizer,chunks)
-        with factory() as db:
+        derived.append((job,row))
+    # Inference happens outside the transaction. One short batch commit avoids
+    # dozens of SQLite fsyncs per batch on Windows while preserving the hash guard.
+    with factory() as db:
+        for job, row in derived:
             current=db.get(Job,job.id)
             # A collector may have changed the body while inference was running.
             if current and current.content_hash==job.content_hash:
                 db.merge(row)
-                db.commit()
+        db.commit()
     return len(jobs)
 
 

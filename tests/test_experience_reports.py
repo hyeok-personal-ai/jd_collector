@@ -29,6 +29,16 @@ def test_document_lifecycle_and_input_guards(client):
     assert client.post('/api/documents',json={**body,'file_base64':'!!'},headers=HEADERS).status_code==422
 
 
+def test_confirmed_career_facts_are_optional_private_and_guarded(client):
+    assert client.get('/api/candidate-facts').json()['professional_months'] is None
+    assert client.put('/api/candidate-facts',json={'professional_months':0}).status_code==403
+    r = client.put('/api/candidate-facts',json={'professional_months':0},headers=HEADERS)
+    assert r.json()['source']=='user_confirmed' and r.json()['professional_months']==0
+    assert client.put('/api/candidate-facts',json={'professional_months':True},headers=HEADERS).status_code==422
+    assert client.put('/api/candidate-facts',json={'professional_months':721},headers=HEADERS).status_code==422
+    assert client.put('/api/candidate-facts',json={'professional_months':None},headers=HEADERS).json()['source']=='unknown'
+
+
 class Tokenizer:
     def encode(self, text, **kwargs):
         return type('Tokens', (), {'offsets':[(i,i+1) for i in range(len(text))]})()
@@ -102,6 +112,47 @@ def test_report_escapes_untrusted_source_and_pdf_korean():
     assert 'Java' in reader.pages[0].extract_text()
 
 
+def test_variant_comparison_same_pool_separate_evidence_and_report(client):
+    from app import api
+    from app.database import Job, JobEmbedding, get_session
+    from sqlalchemy import select
+    store = ExperienceStore()
+    java = store.save('Synthetic Java', 'resume', 'Java', 'Java와 Spring API를 구현하고 Redis 오류 경로를 테스트했습니다.')
+    node = store.save('Synthetic Node', 'resume', 'Node', 'Node.js API를 구현하고 요청자 소유권과 삭제 경계를 테스트했습니다.')
+    index_documents(Model(), Tokenizer(), store)
+    session = api.app.dependency_overrides[get_session](); db = next(session)
+    try:
+        vector = np.zeros(DIM, dtype='<f4'); vector[0] = 1
+        for job in db.scalars(select(Job)).all():
+            job.body_text = '자격요건\nJava 개발 경험\n우대사항\nRedis 사용 경험'
+            db.add(JobEmbedding(job_id=job.id, content_hash=job.content_hash, model=MODEL_KEY,
+                vector=vector.tobytes(), chunks=[job.title, job.body_text], chunk_vectors=np.stack([vector, vector]).tobytes()))
+        db.commit()
+        payload = {'document_ids':[java['id'],node['id']], 'filters':{'open_only':True,'it_only':False,'role':'backend_infra'}}
+        assert client.post('/api/recommendations/compare', json=payload).status_code == 403
+        result = client.post('/api/recommendations/compare', json=payload, headers=HEADERS).json()
+        assert result['status'] == 'ready' and result['compared'] == 2
+        assert result['eligible'] == 2 and result['unindexed'] == 0
+        both = client.post('/api/recommendations/compare', json={**payload,'filters':{'it_only':False,'role':'backend_server'}}, headers=HEADERS).json()
+        assert both['compared']==2
+        for item in result['items']:
+            assert item['best_variant'] == 'Java'
+            assert len(item['variants']) == 2
+            for variant in item['variants']:
+                for row in variant['assessment']['requirements']:
+                    assert all(e['variant'] == variant['variant'] for e in row['evidence'])
+        for fmt in ('html', 'md'):
+            r = client.post('/api/reports', json={**payload, 'kind':'variants','format':fmt}, headers=HEADERS)
+            assert r.status_code == 200 and 'SHA-256' in r.text
+            assert 'Java' in r.text and 'Node' in r.text
+        store.save('Synthetic Node', 'resume', 'Node', TEXT+' Edited.', document_id=node['id'])
+        assert client.post('/api/recommendations/compare', json=payload, headers=HEADERS).json()['status'] == 'index_pending'
+        assert client.post('/api/reports', json={**payload,'kind':'variants'}, headers=HEADERS).status_code == 409
+        assert client.post('/api/recommendations/compare', json={'document_ids':[java['id']]}, headers=HEADERS).status_code == 422
+    finally:
+        session.close()
+
+
 def test_report_endpoints_and_text_input_limits(client):
     ids=[x['id'] for x in client.get('/api/jobs').json()['items'][:2]]
     for fmt in ('html','md'):
@@ -148,3 +199,13 @@ def test_explicit_pause_during_qa_does_not_resume_at_expiry(tmp_path,monkeypatch
     monkeypatch.setattr('app.control.time.time',lambda:qa['expires_at']+1)
     assert store.settings()['auto_collect'] is False
     assert store.settings()['qa_schedule']=={}
+
+
+def test_variant_selection_does_not_overstate_similarity():
+    from app.experience import variant_selection
+    def item(supported, score):
+        return {'assessment': {'required_counts': {'supported': supported, 'unknown': 2, 'mismatch': 0},
+                'priority': '보완 후 지원', 'resume_supported': supported}, 'similarity': score}
+    assert variant_selection([('Node', 1, item(0, .9)), ('Java', 1, item(0, .5))])[0] == 'insufficient_evidence'
+    assert variant_selection([('Node', 1, item(2, .59)), ('Java', 1, item(2, .58))])[0] == 'tie'
+    assert variant_selection([('Java', 1, item(3, .59)), ('Node', 1, item(2, .58))]) == ('supported', 'Java')

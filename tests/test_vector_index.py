@@ -92,3 +92,28 @@ def test_similar_api_preserves_domestic_filter(client):
         filtered=client.get(f'/api/jobs/{jobs[0].id}/similar?korea_only=true&it_only=true').json()
         assert [r['job']['id'] for r in filtered['items']]==[jobs[2].id]
     finally:session.close()
+
+
+def test_batch_commit_does_not_attach_vector_to_changed_source(client):
+    from sqlalchemy.orm import sessionmaker
+    from app.vector_index import build_batch
+    class Tokenizer:
+        def encode(self,text,add_special_tokens):
+            return SimpleNamespace(offsets=[(i,i+1) for i in range(len(text))])
+    session=api.app.dependency_overrides[get_session]();db=next(session)
+    try:
+        factory=sessionmaker(db.get_bind(),expire_on_commit=False)
+        target=db.scalar(select(Job).order_by(Job.id)).id
+        class ChangingModel:
+            changed=False
+            def embed(self,chunks,batch_size):
+                if not self.changed:
+                    with factory() as other:
+                        other.get(Job,target).content_hash='new-revision-during-inference';other.commit()
+                    self.changed=True
+                return [[1.]+[0.]*(DIM-1) for _ in chunks]
+        assert build_batch(ChangingModel(),Tokenizer(),factory)==4
+        db.expire_all()
+        assert db.get(JobEmbedding,target) is None
+        assert index_status(db)['pending']==1
+    finally:session.close()
