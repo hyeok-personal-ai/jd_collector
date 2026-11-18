@@ -8,11 +8,11 @@ Windows에서 [최신 배포본](https://github.com/hyeok-personal-ai/jd_collect
 2. 공고를 선택하고 **회사·포지션 리포트**를 열면 담당 업무, 지원 조건, 같은 회사의 수집 공고, 확인할 항목을 볼 수 있습니다.
 3. 개인 적합도를 보려면 **내 문서·추천 → 첫 문서 추가**에서 이력서 또는 포트폴리오를 추가합니다. 리포트에서 사용할 문서 버전을 고를 수 있습니다.
 
-앱은 개인 PC의 루프백 주소에서 실행되며 개인 문서와 검색 색인을 해당 PC에 보관합니다. 새 PC에 설치할 때는 소스에서 시작하고 기존 PC의 데이터 폴더, 백업, 리포트 또는 클라우드 수집 설정을 복사하지 않습니다.
+앱은 개인 PC의 루프백 주소에서 실행되며 개인 문서와 검색 색인을 해당 PC에 보관합니다. 새로 설치하면 빈 데이터베이스에서 시작합니다.
 
 Playwright 검증은 `pip install -e ".[dev,documents,playwright]"`와 `python -m playwright install chromium`을 실행한 뒤, PowerShell에서 `$env:RADAR_RUN_BROWSER_QA = '1'`을 설정하고 `python -m pytest tests/test_browser_qa.py -q`로 실행할 수 있습니다. 검증은 합성 공고와 임시 데이터 폴더를 사용합니다.
 
-# Recruit Radar / jd_collector
+## 배포 범위
 
 공개 채용 경로를 확인하고 공고를 수집·검색하는 로컬 Python 앱의 소스 기록입니다.
 운영 데이터, 실제 공고 본문, 개인 설정 및 인증정보는 포함하지 않습니다.
@@ -75,8 +75,6 @@ GitHub Actions는 Linux/Windows, Python 3.11/3.12에서 공개 파일 점검·�
 분석에는 [FastEmbed](https://qdrant.github.io/fastembed/)와 [multilingual MiniLM](https://huggingface.co/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2)을 사용합니다. 최초 실행 시 공개 모델을 내려받고 이후 공고 본문 임베딩은 PC에서 계산합니다. 모델은 Apache-2.0이며 FastEmbed의 양자화 ONNX 배포를 사용합니다. 모델 다운로드 연결이 없거나 분석 패키지가 없으면 색인 대기/오류를 표시합니다. 예약 수집에는 분석 패키지와 모델이 필요하지 않습니다.
 
 벡터는 원문 변경 시 다시 계산하며 생성 중인 공고나 오래된 벡터를 최신 검색 결과인 것처럼 사용하지 않습니다. 기존 SQLite DB에 파생 테이블을 추가하므로 원문과 로컬 기록을 유지합니다. 분석 중에도 검색 API는 별도 프로세스에서 응답합니다.
-
-이력서·포트폴리오 업로드/개인 경험 추천, Markdown/HTML/PDF 리포트 내보내기는 아직 포함하지 않습니다.
 
 
 ## 공고를 찾아 비교하는 순서
