@@ -41,3 +41,13 @@ jobs:
         run: python -X utf8 -m pytest -q
       - name: Replay synthetic public feeds
         run: python -X utf8 -m app.offline_replay
+      - name: Install Playwright Chromium
+        if: matrix.os == 'windows-2025' && matrix.python == '3.12'
+        run: |
+          python -m pip install -e ".[playwright]"
+          python -m playwright install chromium
+      - name: Run isolated browser QA
+        if: matrix.os == 'windows-2025' && matrix.python == '3.12'
+        env:
+          RADAR_RUN_BROWSER_QA: '1'
+        run: python -X utf8 -m pytest tests/test_browser_qa.py -q

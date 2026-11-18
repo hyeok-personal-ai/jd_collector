@@ -26,6 +26,56 @@ def posting_report(analyses):
     return blocks
 
 
+def position_report(data):
+    blocks = [('title', '회사·포지션 지원 리포트'), ('p', data['scope']),
+              ('p', '분석 시각 ' + datetime.fromisoformat(data['generated_at']).astimezone(ZoneInfo('Asia/Seoul')).isoformat(timespec='seconds'))]
+    for item in data['items']:
+        company, position = item['company'], item['position']
+        blocks += [('h2', item['title']), ('p', company['name'] or '회사 미확인'),
+                   ('p', '수집 확인 ' + (position['provenance'].get('last_seen_at') or '미확인')),
+                   ('link', position['source_url'])]
+        if item['apply_url']:
+            blocks += [('p', '지원 페이지'), ('link', item['apply_url'])]
+        blocks += [('h3', '회사 채용 맥락'), ('p', company['sample_scope']),
+                   ('p', f"비교에 사용한 회사 공고 {company['sample_size']}건")]
+        if company['official_careers']:
+            blocks += [('p', '공식 채용 페이지'), *[('link', url) for url in company['official_careers']]]
+        else:
+            blocks.append(('p', '등록된 공식 채용 링크를 확인하지 못했습니다.'))
+        for key, label in [('required', '다른 공고의 필수 기술'), ('preferred', '다른 공고의 우대 기술')]:
+            counts = company['technology_mentions'][key]
+            if counts:
+                blocks.append(('p', label + ' · ' + ' / '.join(f"{row['skill']} {row['postings']}건" for row in counts)))
+        for peer in company['related_postings']:
+            if peer['source']:
+                blocks += [('p', peer['title']), ('link', peer['source'])]
+        conditions = position['conditions']
+        blocks += [('h3', '근무·접수 조건'),
+                   ('p', ' · '.join(str(conditions.get(key) or '미확인') for key in ('region', 'employment_type'))),
+                   ('p', '마감 ' + (conditions.get('deadline_on') or conditions.get('deadline_text') or '미확인'))]
+        for key, label in [('duties', '맡게 될 업무'), ('required', '지원 자격'), ('preferred', '우대 경험'), ('conditions', '근무 조건·혜택')]:
+            blocks.append(('h3', label))
+            blocks += [('quote', row['text']) for row in position['sections'][key]] or [('p', '수집한 본문에서 확인하지 못했습니다.')]
+        blocks += [('h3', '이런 경험을 보여줄 수 있는 지원자에게 적합'),
+                   *([('quote', text) for text in item['suitable_for']] or [('p', '자격요건을 원문에서 먼저 확인하세요.')])]
+        blocks += [('h3', '지원 전 확인'), *[('p', check) for check in item['decision_checks']]]
+        if not item['decision_checks']:
+            blocks.append(('p', '접수 시각과 제출 서류를 지원 페이지에서 확인하세요.'))
+        for assessment in item['personal_assessments']:
+            blocks += [('h3', assessment['variant'] + ' · ' + assessment['priority']),
+                       ('p', assessment['priority_reason'])]
+            for row in assessment['requirements']:
+                if row['category'] == 'required' and row['state'] != 'optional':
+                    blocks += [('quote', row['requirement']), ('p', row['label'] + ' · ' + row['reason'])]
+                    for evidence in row['evidence'][:1]:
+                        page = f" {evidence['page']}쪽" if evidence['page'] else ''
+                        blocks += [('p', evidence['document_title'] + page), ('quote', evidence['text'])]
+            for guide in [g for g in assessment['guidance'] if g['category'] == 'required' and g['state'] not in ('supported', 'optional')][:3]:
+                blocks += [('quote', guide['requirement']), ('p', '이력서 · ' + guide['resume_action']),
+                           ('p', '포트폴리오 · ' + guide['portfolio_action'])]
+    return blocks
+
+
 def market_report(data, filters):
     blocks = [('title', '채용 공고 기술 요구 리포트'), ('p', '분석 시각: ' + datetime.now(ZoneInfo('Asia/Seoul')).isoformat(timespec='seconds')),
               ('p', '검색 조건: ' + filters), ('p', f"검색 {data['total']}건 / 분석 {data['analyzed']}건"), ('p', data['scope'])]

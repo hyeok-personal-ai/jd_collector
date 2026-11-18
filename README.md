@@ -1,3 +1,17 @@
+# Recruit Radar
+
+Windows에서 [최신 배포본](https://github.com/hyeok-personal-ai/jd_collector/releases/latest)을 풀고 Python 3.11 이상을 설치하세요. 압축을 푼 폴더에 PowerShell을 열어 `.\start.ps1`을 실행합니다. 첫 실행에는 패키지 설치와 분석 모델 다운로드를 위한 인터넷 연결이 필요합니다.
+
+서버가 준비되면 브라우저가 열립니다. 기본 주소는 `http://127.0.0.1:8000/`입니다. 포트를 바꾸려면 `.\start.ps1 -Port 8003`을 실행하세요.
+
+1. **수집 관리 → 두 사이트 수집 시작**에서 공고를 모읍니다.
+2. 공고를 선택하고 **회사·포지션 리포트**를 열면 담당 업무, 지원 조건, 같은 회사의 수집 공고, 확인할 항목을 볼 수 있습니다.
+3. 개인 적합도를 보려면 **내 문서·추천 → 첫 문서 추가**에서 이력서 또는 포트폴리오를 추가합니다. 리포트에서 사용할 문서 버전을 고를 수 있습니다.
+
+앱은 개인 PC의 루프백 주소에서 실행되며 개인 문서와 검색 색인을 해당 PC에 보관합니다. 새 PC에 설치할 때는 소스에서 시작하고 기존 PC의 데이터 폴더, 백업, 리포트 또는 클라우드 수집 설정을 복사하지 않습니다.
+
+Playwright 검증은 `pip install -e ".[dev,documents,playwright]"`와 `python -m playwright install chromium`을 실행한 뒤, PowerShell에서 `$env:RADAR_RUN_BROWSER_QA = '1'`을 설정하고 `python -m pytest tests/test_browser_qa.py -q`로 실행할 수 있습니다. 검증은 합성 공고와 임시 데이터 폴더를 사용합니다.
+
 # Recruit Radar / jd_collector
 
 공개 채용 경로를 확인하고 공고를 수집·검색하는 로컬 Python 앱의 소스 기록입니다.

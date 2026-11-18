@@ -57,7 +57,7 @@ async def lifespan(_app: FastAPI):
             await asyncio.gather(vector_worker, return_exceptions=True)
 
 
-app = FastAPI(title="Recruit Radar", version="2.8.0", lifespan=lifespan)
+app = FastAPI(title="Recruit Radar", version="2.9.0", lifespan=lifespan)
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=['localhost', '127.0.0.1', '[::1]', 'testserver'])
 
 
@@ -785,8 +785,8 @@ def compare_document_variants(body:RecommendationInput,db:SessionDep):
 
 class ReportInput(BaseModel):
     model_config = ConfigDict(extra='forbid')
-    kind: Literal['posting','market','experience','variants'] = 'posting'
-    format: Literal['md','html','pdf'] = 'html'
+    kind: Literal['posting','market','experience','variants','position'] = 'posting'
+    format: Literal['md','html','pdf','json'] = 'html'
     ids: list[int] = Field(default_factory=list,max_length=4)
     document_ids: list[int] = Field(default_factory=list,max_length=20)
     limit: int = Field(20,ge=1,le=50)
@@ -798,11 +798,32 @@ def export_report(body:ReportInput,db:SessionDep):
     from . import reports
     from .posting_analysis import structured_analysis
     try:
-        if body.kind=='posting':
+        if body.format == 'json' and body.kind != 'position':
+            raise ValueError('JSON 저장은 회사·포지션 리포트에서 사용할 수 있습니다.')
+        if body.kind in ('posting', 'position'):
             if not body.ids:raise ValueError('공고를 1~4개 선택하세요.')
             jobs=[db.get(Job,i) for i in dict.fromkeys(body.ids)]
             if any(j is None for j in jobs):raise HTTPException(404,'Posting not found')
-            blocks=reports.posting_report([structured_analysis(j) for j in jobs])
+            if body.kind == 'position':
+                from .experience import ExperienceStore
+                from .position_report import build_position_report
+                store = ExperienceStore() if body.document_ids else None
+                try:
+                    documents = [store.get(i) for i in dict.fromkeys(body.document_ids)] if store else []
+                except KeyError as exc:
+                    raise ValueError('선택한 문서를 찾을 수 없습니다.') from exc
+                if any(not doc['enabled'] for doc in documents):
+                    raise ValueError('활성 상태의 문서를 선택하세요.')
+                data = build_position_report(db, jobs, documents, store.candidate_facts() if store else None)
+                if body.format == 'json':
+                    from fastapi.responses import JSONResponse
+                    return JSONResponse(data, headers={
+                        'Content-Disposition': 'attachment; filename="radar-position.json"',
+                        'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff',
+                    })
+                blocks = reports.position_report(data)
+            else:
+                blocks=reports.posting_report([structured_analysis(j) for j in jobs])
         elif body.kind=='market':
             from .job_analysis import summarize_jobs
             conditions=body.filters.conditions(db)

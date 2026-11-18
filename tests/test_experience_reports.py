@@ -13,6 +13,24 @@ HEADERS = {'X-Radar-Request': '1'}
 TEXT = 'Synthetic project: built a Java Spring API, measured Redis caching and tested Docker deployment.'
 
 
+def test_position_report_keeps_personal_evidence_opt_in(client):
+    job_id = client.get('/api/jobs').json()['items'][0]['id']
+    params = {'kind': 'position', 'ids': [job_id], 'format': 'json'}
+    response = client.post('/api/reports', json=params, headers=HEADERS)
+    assert response.status_code == 200
+    assert response.headers['cache-control'] == 'no-store'
+    item = response.json()['items'][0]
+    assert item['job_id'] == job_id and item['position']['source_url']
+    assert item['personal_assessments'] == []
+    doc = ExperienceStore().save('Synthetic evidence', 'resume', 'Java', TEXT)
+    result = client.post('/api/reports', json={**params, 'document_ids': [doc['id']]}, headers=HEADERS)
+    assert result.status_code == 200
+    assert result.json()['items'][0]['personal_assessments'][0]['variant'] == 'Java'
+    assert client.post('/api/reports', json={**params, 'document_ids': [99999]}, headers=HEADERS).status_code == 422
+    html = client.post('/api/reports', json={**params, 'format': 'html'}, headers=HEADERS)
+    assert html.status_code == 200 and '회사·포지션 지원 리포트' in html.text
+
+
 def test_document_lifecycle_and_input_guards(client):
     body = {'title': 'Synthetic portfolio', 'kind': 'portfolio', 'variant': 'Java', 'text': TEXT}
     assert client.post('/api/documents', json=body).status_code == 403

@@ -4,6 +4,11 @@ Set-Location -LiteralPath $PSScriptRoot
 $env:PYTHONUTF8 = '1'
 $env:RADAR_WORKER = '1'
 $env:RADAR_DATA_DIR = Join-Path $PSScriptRoot 'data'
+$localDatabase = Join-Path $PSScriptRoot 'recruit.db'
+if (-not (Test-Path -LiteralPath $localDatabase)) {
+    $localDatabase = Join-Path $env:RADAR_DATA_DIR 'recruit.db'
+}
+$env:DATABASE_URL = 'sqlite:///' + $localDatabase
 $activeRuntime = Join-Path $PSScriptRoot 'data\active-runtime.json'
 if (Test-Path -LiteralPath $activeRuntime) {
     $active = Get-Content -LiteralPath $activeRuntime -Raw | ConvertFrom-Json
@@ -17,7 +22,14 @@ if (Test-Path -LiteralPath $activeRuntime) {
 }
 $python = Join-Path $PSScriptRoot '.venv\Scripts\python.exe'
 if (-not (Test-Path -LiteralPath $python)) {
-    py -3 -m venv .venv
+    $bootstrap = Get-Command py.exe -ErrorAction SilentlyContinue
+    if ($bootstrap) {
+        & $bootstrap.Source -3 -m venv .venv
+    } else {
+        $bootstrap = Get-Command python.exe -ErrorAction SilentlyContinue
+        if (-not $bootstrap) { throw 'Install Python 3.11 or newer before running this script.' }
+        & $bootstrap.Source -m venv .venv
+    }
     if ($LASTEXITCODE -ne 0) { throw 'Python 3.11 이상이 필요합니다.' }
     & $python -m pip install -e '.[dev,analysis,documents]'
     if ($LASTEXITCODE -ne 0) { throw '패키지 설치 실패' }
@@ -43,6 +55,7 @@ if ($alreadyRunning) {
     Write-Host "Recruit Radar is already running at http://127.0.0.1:$Port/"
     exit 0
 }
-if (-not $NoBrowser) { Start-Process "http://127.0.0.1:$Port" }
-& $python -X utf8 -m app.launcher --port $Port
+$launcherArgs = @('-X','utf8','-m','app.launcher','--port',$Port)
+if (-not $NoBrowser) { $launcherArgs += '--open-browser' }
+& $python @launcherArgs
 exit $LASTEXITCODE
